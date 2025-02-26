@@ -3,3 +3,5 @@ pymysql
 Flask-SQLAlchemy
 Flask-WTF
 mysql-connector-python
+flask-bcrypt
+flask-login

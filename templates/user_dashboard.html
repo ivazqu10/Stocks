@@ -3,44 +3,46 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-
 <div class="row">
-
     <div class="col-md-12">
-
         <h1 class="display-4">Welcome to the Dashboard</h1>
-
         <p class="lead">Dashboard stuff here.</p>
-
     </div>
-
 </div>
 
 <!-- Example Bootstrap Components -->
-
 <div class="row mt-4">
-
     <!-- Card Example -->
-
     <div class="col-md-4">
-
         <div class="card">
-
             <div class="card-body">
-
                 <h5 class="card-title">Feature One</h5>
-
                 <p class="card-text">More Dashboard stuff.</p>
-
                 <a href="#" class="btn btn-primary">Learn More</a>
-
             </div>
-
         </div>
-
     </div>
-
-
 </div>
 
+<!-- Conditional Rendering based on Authentication and Role -->
+{% if current_user.is_authenticated %}
+    <h1>Welcome, {{ current_user.username }}!</h1>
+    {% if current_user.role == "admin" %}
+        <h2>Admin Dashboard</h2>
+        <p>This is visible only to admins: Manage users, settings, etc.</p>
+    {% elif current_user.role == "user" %}
+        <h2>User Dashboard</h2>
+        <p>This is visible only to users: Your profile info.</p>
+    {% endif %}
+{% else %}
+    <h1>You are not logged in</h1>
+{% endif %}
+
+
 {% endblock %}
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("login"))
