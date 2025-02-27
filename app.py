@@ -8,7 +8,7 @@ from functools import wraps
 app = Flask(__name__)
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Madrid0329.@localhost/stocks_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Jaman3240@localhost/stock_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
@@ -67,7 +67,13 @@ def login():
         if user and check_password_hash(user.password, password):
             login_user(user)
             flash("Login successful!", "success")
-            return redirect(url_for('user_dashboard'))
+
+            # Check the user's role and redirect accordingly
+            if user.role == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('user_dashboard'))
+
         flash("Invalid username or password!", "danger")
     return render_template('login.html')
 
