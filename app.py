@@ -1,125 +1,137 @@
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, request, url_for, redirect, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from flask_bcrypt import Bcrypt
+from werkzeug.security import generate_password_hash, check_password_hash
+import os
+from functools import wraps
 
 app = Flask(__name__)
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Jaman3240@localhost/user_log'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Madrid0329.@localhost/stocks_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'your-secret-key'  # Ensure this is set
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
 # Initialize extensions
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
-bcrypt = Bcrypt(app)
+login_manager.login_view = "login"
 
-# User model with role-based access control
-class Users(UserMixin, db.Model):
+class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(250), unique=True, nullable=False)
-    password = db.Column(db.String(250), nullable=False)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(50), default="user", nullable=False)
 
-# Initialize database
 with app.app_context():
     db.create_all()
 
 @login_manager.user_loader
 def load_user(user_id):
-    return Users.query.get(int(user_id))
+    return User.query.get(int(user_id))
 
-@app.route('/register', methods=["GET", "POST"])
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != "admin":
+            flash("Access Denied!", "danger")
+            return redirect(url_for('user_dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/register', methods=['GET', 'POST'])
 def register():
-    if request.method == "POST":
-        hashed_password = bcrypt.generate_password_hash(request.form.get("password")).decode('utf-8')
-        user = Users(
-            username=request.form.get("username"),
-            password=hashed_password,
-            role="user"  # Default role is "user"
-        )
-        db.session.add(user)
+    if request.method == 'POST':
+        username = request.form['username']
+        password = generate_password_hash(request.form['password'])
+        
+        if User.query.filter_by(username=username).first():
+            flash("Username already exists!", "danger")
+            return redirect(url_for('register'))
+        
+        new_user = User(username=username, password=password)
+        db.session.add(new_user)
         db.session.commit()
-        print(f"User {user.username} registered successfully.")  # Debug print
-        login_user(user)
-        return redirect(url_for("user_dashboard"))  # Redirect to user_dashboard after registration
-    return render_template("sign_up.html")
+        flash("Registration successful! Please login.", "success")
+        return redirect(url_for('login'))
+    return render_template('register.html')
 
-@app.route('/login', methods=["GET", "POST"])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        print(f"Attempting login with username: {username}")  # Debug print
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username).first()
+        
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            flash("Login successful!", "success")
+            return redirect(url_for('user_dashboard'))
+        flash("Invalid username or password!", "danger")
+    return render_template('login.html')
 
-        # Fetch user from the database based on the entered username
-        user = Users.query.filter_by(username=username).first()
-
-        if user:
-            print(f"User {user.username} found in the database.")  # Debug print
-            if bcrypt.check_password_hash(user.password, password):  # Check if the password is correct
-                print(f"Password is correct for {user.username}")  # Debug print
-                login_user(user)  # Log the user in
-                return redirect(url_for("user_dashboard"))  # Redirect to user dashboard after successful login
-            else:
-                print(f"Incorrect password for {username}.")  # Debug print
-                return render_template("login.html", error="Incorrect password.")  # Optionally show an error message
-        else:
-            print(f"User {username} not found in the database.")  # Debug print
-            return render_template("login.html", error="User not found.")  # Optionally show an error message
-    return render_template("login.html")
-
-@app.route('/')
-@login_required  # Restricts access to authenticated users only
+@app.route('/') 
+@login_required
 def user_dashboard():
-    print(f"Accessing user_dashboard as {current_user.username}")  # Debug print
-    return render_template("user_dashboard.html")
+    return render_template('user_dashboard.html')
+
+@app.route('/portfolio') 
+@login_required
+def portfolio():
+    return render_template('portfolio.html') 
+
+@app.route('/instructions_page') 
+@login_required
+def instructions_page():
+    return render_template('instructions_page.html')
+
+@app.route('/buy_sell_stock') 
+@login_required
+def buy_sell_stock():
+    return render_template('buy_sell_stock.html')
+
+@app.route('/funds') 
+@login_required
+def funds():
+    return render_template('funds.html')
+
+@app.route('/admin_dashboard') 
+@login_required
+@admin_required
+def admin_dashboard():
+    return render_template('admin_dashboard.html')
+
+@app.route('/admin_logs') 
+@login_required
+@admin_required
+def admin_logs():
+    return render_template('admin_logs.html')
+
+@app.route('/admin_market_hours') 
+@login_required
+@admin_required
+def admin_market_hours():
+    return render_template('admin_market_hours.html')
+
+@app.route('/admin_account_management') 
+@login_required
+@admin_required
+def admin_account_management():
+    return render_template('admin_account_management.html')
+
+@app.route('/admin_add_remove_stock') 
+@login_required
+@admin_required
+def admin_add_remove_stock():
+    return render_template('admin_add_remove_stock.html')
 
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for("login"))
-
-# User Pages
-@app.route('/portfolio')
-def portfolio():
-    return render_template('portfolio.html')
-
-@app.route('/instructions_page')
-def instructions_page():
-    return render_template('instructions_page.html')
-
-@app.route('/buy_sell_stock')
-def buy_sell_stock():
-    return render_template('buy_sell_stock.html')
-
-@app.route('/funds')
-def funds():
-    return render_template('funds.html')
-
-# Admin Pages
-@app.route('/admin_dashboard')
-def admin_dashboard():
-    return render_template('admin_dashboard.html')
-
-@app.route('/admin_logs')
-def admin_logs():
-    return render_template('admin_logs.html')
-
-@app.route('/admin_market_hours')
-def admin_market_hours():
-    return render_template('admin_market_hours.html')
-
-@app.route('/admin_account_management')
-def admin_account_management():
-    return render_template('admin_account_management.html')
-
-@app.route('/admin_add_remove_stock')
-def admin_add_remove_stock():
-    return render_template('admin_add_remove_stock.html')
+    flash("Logged out successfully.", "info")
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     app.run(debug=True)
