@@ -3,17 +3,18 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import yfinance as yf
+import datetime
 from functools import wraps
 
 app = Flask(__name__)
 
-# Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Jaman3240@localhost/stock_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:67mustang@localhost/user_log'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
-# Initialize extensions
 db = SQLAlchemy(app)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
@@ -24,8 +25,51 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(50), default="user", nullable=False)
 
+class StockPrice(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    symbol = db.Column(db.String(10), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Stock {self.symbol}: ${self.price}>"
+
 with app.app_context():
-    db.create_all()
+    db.create_all()  
+
+def fetch_stock_prices(stock_symbols):
+    stock_objects = []
+    for stock in stock_symbols:
+        try:
+            ticker = yf.Ticker(stock)
+            latest_price = ticker.info.get("regularMarketPrice")
+
+            if latest_price is not None:
+                stock_objects.append(StockPrice(symbol=stock, price=latest_price))
+                print(f"Stored {stock}: ${latest_price:.2f} in database")
+            else:
+                print(f"No market price available for {stock}")
+
+        except Exception as e:
+            print(f"Error fetching {stock}: {e}")
+
+    if stock_objects:
+        db.session.bulk_save_objects(stock_objects)
+        db.session.commit()
+
+@app.route('/update_stocks')
+@login_required
+def update_stocks():
+    stock_symbols = ["AAPL", "TSLA", "GOOG"]
+    fetch_stock_prices(stock_symbols)
+    flash("Stock prices updated successfully!", "success")
+    return redirect(url_for('buy_sell_stock'))
+
+@app.route('/buy_sell_stock')
+@login_required
+def buy_sell_stock():
+    stocks = StockPrice.query.order_by(StockPrice.timestamp.desc()).limit(10).all()
+    return render_template('buy_sell_stock.html', stocks=stocks)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -45,11 +89,11 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = generate_password_hash(request.form['password'])
-        
+
         if User.query.filter_by(username=username).first():
             flash("Username already exists!", "danger")
             return redirect(url_for('register'))
-        
+
         new_user = User(username=username, password=password)
         db.session.add(new_user)
         db.session.commit()
@@ -63,12 +107,10 @@ def login():
         username = request.form['username']
         password = request.form['password']
         user = User.query.filter_by(username=username).first()
-        
+
         if user and check_password_hash(user.password, password):
             login_user(user)
             flash("Login successful!", "success")
-
-            # Check the user's role and redirect accordingly
             if user.role == 'admin':
                 return redirect(url_for('admin_dashboard'))
             else:
@@ -91,11 +133,6 @@ def portfolio():
 @login_required
 def instructions_page():
     return render_template('instructions_page.html')
-
-@app.route('/buy_sell_stock') 
-@login_required
-def buy_sell_stock():
-    return render_template('buy_sell_stock.html')
 
 @app.route('/funds') 
 @login_required
