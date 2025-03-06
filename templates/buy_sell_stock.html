@@ -1,7 +1,124 @@
 {% extends "user_base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+
+<style>
+    /* Improve table styling */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    th, td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: center;
+    }
+
+    th {
+        background-color: #343a40;
+        color: white;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    /* Improve Buy/Sell buttons */
+    .buy-btn, .sell-btn {
+        width: 80px;
+        padding: 6px 0;
+        font-weight: bold;
+        transition: 0.3s ease-in-out;
+    }
+
+    .buy-btn:hover {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .sell-btn:hover {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    /* Center content */
+    .Buy_sell_Container {
+        max-width: 900px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        margin-top: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    .btn-primary {
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+</style>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".buy-btn, .sell-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                let symbol = this.getAttribute("data-symbol");
+                let action = this.classList.contains("buy-btn") ? "buy" : "sell";
+                let availableShares = parseInt(this.getAttribute("data-quantity")); // Fetch available stock quantity
+    
+                // Ask user for number of shares
+                let shares = prompt(`How many shares of ${symbol} would you like to ${action}? Available: ${availableShares}`, "1");
+    
+                // Validate input
+                if (!shares || isNaN(shares) || shares <= 0) {
+                    alert("Invalid input. Please enter a valid number of shares.");
+                    return;
+                }
+    
+                shares = parseInt(shares); // Convert input to integer
+    
+                // Check if enough shares are available
+                if (action === "buy" && shares > availableShares) {
+                    alert(`Not enough shares available! Only ${availableShares} shares can be bought.`);
+                    return;
+                }
+    
+                // Confirm order
+                let confirmOrder = confirm(`Are you sure you want to ${action} ${shares} shares of ${symbol}?`);
+                if (!confirmOrder) {
+                    return;
+                }
+    
+                // Send request to Flask
+                fetch(`/trade_stock`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ symbol: symbol, action: action, shares: shares })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Trade successful! New balance: $${data.new_balance}`);
+                        location.reload();
+                    } else {
+                        alert("Trade failed: " + data.error);
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+            });
+        });
+    });
+    </script>
+
+<div class="Buy_sell_Container">
     <h2 class="text-center">Buy & Sell Stocks</h2>
 
     {% if not stocks %}
@@ -23,8 +140,8 @@
         <tbody id="stockTable">
             {% for stock in stocks %}
             <tr>
-                <td>{{ stock.symbol }}</td>
-                <td>{{ "%.2f"|format(stock.price) }}</td>
+                <td><strong>{{ stock.symbol }}</strong></td>
+                <td>${{ "%.2f"|format(stock.price) }}</td>
                 <td>{{ stock.quantity }}</td>
                 <td>{{ stock.timestamp.strftime('%Y/%m/%d %H:%M') }}</td>
                 <td>
@@ -47,5 +164,5 @@
     </div>
 </div>
 
-
 {% endblock %}
+

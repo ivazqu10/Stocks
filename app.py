@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, flash
+from flask import Flask, render_template, request, url_for, redirect, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10,7 +10,7 @@ import pandas as pd
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:67mustang@localhost/user_log'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Madrid0329.@localhost/stocks_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
@@ -21,6 +21,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(50), default="user", nullable=False)
+    cash_balance = db.Column(db.Float, default=0.0) 
 
 class stock_price(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -28,6 +29,29 @@ class stock_price(db.Model):
     price = db.Column(db.Float, nullable=False, default=0.0)
     quantity = db.Column(db.Integer, nullable=False, default=0)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class UserPortfolio(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    stock_id = db.Column(db.Integer, db.ForeignKey('stock_price.id'), nullable=False)
+    shares_owned = db.Column(db.Integer, default=0)
+
+    user = db.relationship('User', backref=db.backref('portfolio', lazy=True))
+    stock = db.relationship('stock_price', backref=db.backref('holdings', lazy=True))
+
+class TransactionHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    stock_id = db.Column(db.Integer, db.ForeignKey('stock_price.id'), nullable=False)
+    transaction_type = db.Column(db.String(10), nullable=False)  # "BUY" or "SELL"
+    shares = db.Column(db.Integer, nullable=False)
+    price_per_share = db.Column(db.Float, nullable=False)
+    total_cost = db.Column(db.Float, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('transactions', lazy=True))
+    stock = db.relationship('stock_price', backref=db.backref('transactions', lazy=True))
+
 
 with app.app_context():
     db.create_all()
@@ -200,6 +224,103 @@ def login():
         flash("Invalid username or password!", "danger")
     return render_template('login.html')
 
+@app.route("/trade_stock", methods=["POST"])
+@login_required
+def trade_stock():
+    data = request.get_json()
+    symbol = data.get("symbol")
+    action = data.get("action")
+    shares = int(data.get("shares", 0))  
+
+    user = current_user
+    stock = stock_price.query.filter_by(symbol=symbol).first()
+
+    if not stock:
+        return jsonify({"success": False, "error": "Stock not found"})
+
+    user_portfolio = UserPortfolio.query.filter_by(user_id=user.id, stock_id=stock.id).first()
+
+    if action == "buy":
+        total_cost = stock.price * shares  # Calculate the total cost of the purchase
+
+        if stock.quantity < shares:
+            return jsonify({"success": False, "error": f"Not enough shares available. Only {stock.quantity} left."})
+
+        if user.cash_balance < total_cost:
+            return jsonify({"success": False, "error": "Not enough funds in cash account"})
+
+        user.cash_balance -= total_cost
+        stock.quantity -= shares
+
+        if user_portfolio:
+            user_portfolio.shares_owned += shares
+        else:
+            new_entry = UserPortfolio(user_id=user.id, stock_id=stock.id, shares_owned=shares)
+            db.session.add(new_entry)
+
+        # ✅ Log the buy transaction
+        transaction = TransactionHistory(
+            user_id=user.id,
+            stock_id=stock.id,
+            transaction_type="BUY",
+            shares=shares,
+            price_per_share=stock.price,
+            total_cost=total_cost
+        )
+        db.session.add(transaction)
+
+    elif action == "sell":
+        if not user_portfolio or user_portfolio.shares_owned < shares:
+            return jsonify({"success": False, "error": "Not enough shares to sell"})
+
+        total_sale_value = stock.price * shares
+        user_portfolio.shares_owned -= shares
+        user.cash_balance += total_sale_value
+        stock.quantity += shares
+
+        # ✅ Log the sell transaction
+        transaction = TransactionHistory(
+            user_id=user.id,
+            stock_id=stock.id,
+            transaction_type="SELL",
+            shares=shares,
+            price_per_share=stock.price,
+            total_cost=total_sale_value
+        )
+        db.session.add(transaction)
+
+    db.session.commit()
+
+    return jsonify({"success": True, "new_balance": user.cash_balance})
+
+
+@app.route("/deposit_cash", methods=["POST"])
+@login_required
+def deposit_cash():
+    amount = float(request.form.get("amount"))
+    if amount > 0:
+        current_user.cash_balance += amount
+        db.session.commit()
+        flash("Deposit successful!", "success")
+    return redirect(url_for("funds"))
+
+@app.route("/withdraw_cash", methods=["POST"])
+@login_required
+def withdraw_cash():
+    amount = float(request.form.get("amount"))
+    if 0 < amount <= current_user.cash_balance:
+        current_user.cash_balance -= amount
+        db.session.commit()
+        flash("Withdrawal successful!", "success")
+    else:
+        flash("Invalid withdrawal amount!", "danger")
+    return redirect(url_for("funds"))
+
+@app.route("/transactions")
+@login_required
+def transactions():
+    transactions = TransactionHistory.query.filter_by(user_id=current_user.id).order_by(TransactionHistory.timestamp.desc()).all()
+    return render_template("transactions.html", transactions=transactions)
 
 @app.route('/portfolio')
 @login_required
@@ -226,7 +347,11 @@ def admin_dashboard():
 @login_required
 @admin_required
 def admin_logs():
-    return render_template('admin_logs.html')
+    # Query all transactions from the TransactionHistory table
+    transactions = TransactionHistory.query.order_by(TransactionHistory.timestamp.desc()).all()
+    
+    return render_template('admin_logs.html', transactions=transactions)
+
 
 @app.route('/admin_market_hours') 
 @login_required

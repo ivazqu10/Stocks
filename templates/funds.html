@@ -16,31 +16,17 @@
 
 </div>
 
-<!-- Example Bootstrap Components -->
+<form action="{{ url_for('deposit_cash') }}" method="POST">
+    <label>Deposit ($):</label>
+    <input type="number" name="amount" min="1" step="0.01" class="form-control">
+    <button type="submit" class="btn btn-success mt-2">Deposit</button>
+</form>
 
-<div class="row mt-4">
+<form action="{{ url_for('withdraw_cash') }}" method="POST">
+    <label>Withdraw ($):</label>
+    <input type="number" name="amount" min="1" step="0.01" class="form-control">
+    <button type="submit" class="btn btn-danger mt-2">Withdraw</button>
+</form>
 
-    <!-- Card Example -->
-
-    <div class="col-md-4">
-
-        <div class="card">
-
-            <div class="card-body">
-
-                <h5 class="card-title">Feature Four</h5>
-
-                <p class="card-text">Let us add more funds to buy Stocks.</p>
-
-                <a href="#" class="btn btn-primary">Learn More</a>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-</div>
 
 {% endblock %}

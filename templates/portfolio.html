@@ -9,38 +9,33 @@
     <div class="col-md-12">
 
         <h1 class="display-4">Welcome to your portfolio</h1>
-
-        <p class="lead">Username, Funds, stocks owned.</p>
-
     </div>
 
 </div>
 
-<!-- Example Bootstrap Components -->
 
-<div class="row mt-4">
+<div class="container mt-4">
+    <h2>Your Portfolio</h2>
+    <p><strong>Balance:</strong> ${{ "%.2f"|format(current_user.cash_balance) }}</p>
 
-    <!-- Card Example -->
-
-    <div class="col-md-4">
-
-        <div class="card">
-
-            <div class="card-body">
-
-                <h5 class="card-title">Feature two</h5>
-
-                <p class="card-text">More Portfolio stuff.</p>
-
-                <a href="#" class="btn btn-primary">Learn More</a>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
+    <h3>Owned Stocks</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Stock</th>
+                <th>Shares Owned</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stock in current_user.portfolio %}
+            <tr>
+                <td>{{ stock.stock.symbol }}</td>
+                <td>{{ stock.shares_owned }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
+
 
 {% endblock %}
