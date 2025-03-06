@@ -4,8 +4,9 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import yfinance as yf
-import datetime
+from datetime import datetime
 from functools import wraps
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -15,61 +16,28 @@ app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
 db = SQLAlchemy(app)
 
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "login"
-
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(50), default="user", nullable=False)
 
-class StockPrice(db.Model):
+class stock_price(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     symbol = db.Column(db.String(10), nullable=False)
-    price = db.Column(db.Float, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    price = db.Column(db.Float, nullable=False, default=0.0)
+    quantity = db.Column(db.Integer, nullable=False, default=0)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+with app.app_context():
+    db.create_all()
 
     def __repr__(self):
         return f"<Stock {self.symbol}: ${self.price}>"
-
-with app.app_context():
-    db.create_all()  
-
-def fetch_stock_prices(stock_symbols):
-    stock_objects = []
-    for stock in stock_symbols:
-        try:
-            ticker = yf.Ticker(stock)
-            latest_price = ticker.info.get("regularMarketPrice")
-
-            if latest_price is not None:
-                stock_objects.append(StockPrice(symbol=stock, price=latest_price))
-                print(f"Stored {stock}: ${latest_price:.2f} in database")
-            else:
-                print(f"No market price available for {stock}")
-
-        except Exception as e:
-            print(f"Error fetching {stock}: {e}")
-
-    if stock_objects:
-        db.session.bulk_save_objects(stock_objects)
-        db.session.commit()
-
-@app.route('/update_stocks')
-@login_required
-def update_stocks():
-    stock_symbols = ["AAPL", "TSLA", "GOOG"]
-    fetch_stock_prices(stock_symbols)
-    flash("Stock prices updated successfully!", "success")
-    return redirect(url_for('buy_sell_stock'))
-
-@app.route('/buy_sell_stock')
-@login_required
-def buy_sell_stock():
-    stocks = StockPrice.query.order_by(StockPrice.timestamp.desc()).limit(10).all()
-    return render_template('buy_sell_stock.html', stocks=stocks)
+    
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -84,6 +52,119 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+def get_stock_price(symbol):
+    try:
+        stock_data = yf.Ticker(symbol)
+        hist = stock_data.history(period="1d")
+        if not hist.empty:
+            price = hist["Close"].iloc[-1] 
+            print(f"Fetched price for {symbol}: {price}") 
+            return float(price)  
+    except Exception as e:
+        print(f"Error fetching stock price for {symbol}: {e}")
+    return 0.0  
+
+
+@app.route('/admin_add_remove_stock', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_add_remove_stock():
+    if request.method == 'POST':
+        symbol = request.form.get("symbol", "").upper()
+        quantity = request.form.get("quantity", 0, type=int)
+
+        if not symbol:
+            flash("Please insert stock.")
+            return redirect(url_for('admin_add_remove_stock'))
+
+        if quantity <= 0:
+            flash("Quantity cannot be 0.")
+            return redirect(url_for('admin_add_remove_stock'))
+
+        existing_stock = stock_price.query.filter_by(symbol=symbol).first()
+        if existing_stock:
+            flash(f"{symbol} is already being tracked.")
+            return redirect(url_for('admin_add_remove_stock'))
+
+        price = get_stock_price(symbol)
+        if price == 0.0:
+            flash(f"Failed to fetch stock price for {symbol}.")
+            return redirect(url_for('admin_add_remove_stock'))
+
+        new_stock = stock_price(symbol=symbol, price=price, quantity=quantity)
+        db.session.add(new_stock)
+        db.session.commit()
+
+        flash(f"Stock {symbol} added successfully with price ${price:.2f} and quantity {quantity}!")
+        return redirect(url_for('admin_add_remove_stock'))
+
+    stocks = stock_price.query.all()
+    return render_template('admin_add_remove_stock.html', stocks=stocks)
+
+@app.route('/delete_stock/<int:stock_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_stock(stock_id):
+    stock = stock_price.query.get(stock_id)
+    if not stock:
+        flash("Stock not found.")
+        return redirect(url_for('admin_add_remove_stock'))
+
+    db.session.delete(stock)
+    db.session.commit()
+
+    flash("Stock deleted.")
+    return redirect(url_for('admin_add_remove_stock'))
+
+@app.route('/edit_stock/<int:stock_id>', methods=['POST'])
+def edit_stock(stock_id):
+    stock = stock_price.query.get(stock_id)
+    if stock:
+        new_quantity = request.form.get('quantity', type=int)
+        if new_quantity and new_quantity > 0:
+            stock.quantity = new_quantity
+            stock.timestamp = datetime.utcnow() 
+            db.session.commit()
+            flash(f'Stock {stock.symbol} updated.')
+        else:
+            flash('Invalid quantity.')
+    else:
+        flash('Stock not found.')
+
+    return redirect(url_for('admin_add_remove_stock'))
+
+@app.route('/buy_sell_stock')
+@login_required
+def buy_sell_stock():
+    stocks = stock_price.query.order_by(stock_price.timestamp.desc()).limit(10).all()
+    return render_template('buy_sell_stock.html', stocks=stocks)
+
+def fetch_stock_prices():
+    stock_symbols = [stock.symbol for stock in stock_price.query.all()]
+    if not stock_symbols:
+        print("No stocks available.")
+        return
+    try:
+        data = yf.download(stock_symbols, period="1d")['Adj Close'].iloc[-1]
+        
+        for symbol in stock_symbols:
+            if not pd.isna(data[symbol]): 
+                stock = stock_price.query.filter_by(symbol=symbol).first()
+                if stock:
+                    stock.price = data[symbol]
+                    stock.timestamp = datetime.utcnow()
+        
+        db.session.commit()
+        print("Stock prices updated.")
+
+    except Exception as e:
+        print(f"Error fetching stock data: {e}")
+
+@app.route('/') 
+@login_required
+def user_dashboard():
+    return render_template('user_dashboard.html')
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -119,15 +200,11 @@ def login():
         flash("Invalid username or password!", "danger")
     return render_template('login.html')
 
-@app.route('/') 
-@login_required
-def user_dashboard():
-    return render_template('user_dashboard.html')
 
-@app.route('/portfolio') 
+@app.route('/portfolio')
 @login_required
 def portfolio():
-    return render_template('portfolio.html') 
+    return render_template('portfolio.html')
 
 @app.route('/instructions_page') 
 @login_required
@@ -163,12 +240,6 @@ def admin_market_hours():
 def admin_account_management():
     return render_template('admin_account_management.html')
 
-@app.route('/admin_add_remove_stock') 
-@login_required
-@admin_required
-def admin_add_remove_stock():
-    return render_template('admin_add_remove_stock.html')
-
 @app.route('/logout')
 @login_required
 def logout():
@@ -176,5 +247,7 @@ def logout():
     flash("Logged out successfully.", "info")
     return redirect(url_for('login'))
 
+
 if __name__ == '__main__':
     app.run(debug=True)
+

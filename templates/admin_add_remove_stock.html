@@ -1,46 +1,70 @@
 {% extends "admin_base.html" %}
 
-{% block title %}Stock Management{% endblock %}
+{% block title %}Manage Stocks{% endblock %}
 
 {% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Manage Stocks</h2>
 
-<div class="row">
+    <form action="{{ url_for('admin_add_remove_stock') }}" method="POST" class="mb-4">
+        <h4>Add a Stock</h4>
+        <input type="text" name="symbol" class="form-control mb-2" placeholder="Stock Symbol" required>
+        <input type="number" name="quantity" class="form-control mb-2" min="1" placeholder="Quantity" required>
+        <button type="submit" class="btn btn-primary">Add Stock</button>
+    </form>
 
-    <div class="col-md-12">
+    <h3>Tracked Stocks</h3>
+    {% if stocks %}
+    <table class="table table-bordered text-center">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Price ($)</th>
+                <th>Quantity</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stock in stocks %}
+            <tr>
+                <td>{{ stock.symbol }}</td>
+                <td>
+                    {% if stock.price is not none %}
+                        ${{ "%.2f"|format(stock.price) }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>{{ stock.quantity }}</td>
+                <td>
+                    <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editStockModal{{ stock.id }}">Edit</button>
+                    <form action="{{ url_for('delete_stock', stock_id=stock.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ stock.symbol }}?');">Delete</button>
+                    </form>
+                </td>
+            </tr>
 
-        <h1 class="display-4">Add and Remove Stocks</h1>
-
-        <p class="lead">Modify the stocks.</p>
-
-    </div>
-
-</div>
-
-<!-- Example Bootstrap Components -->
-
-<div class="row mt-4">
-
-    <!-- Card Example -->
-
-    <div class="col-md-4">
-
-        <div class="card">
-
-            <div class="card-body">
-
-                <h5 class="card-title">Feature Four</h5>
-
-                <p class="card-text">We can also modify the stocks if needed.</p>
-
-                <a href="#" class="btn btn-primary">Learn More</a>
-
+            <div class="modal fade" id="editStockModal{{ stock.id }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit {{ stock.symbol }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form action="{{ url_for('edit_stock', stock_id=stock.id) }}" method="POST">
+                                <input type="number" name="quantity" class="form-control mb-2" min="1" value="{{ stock.quantity }}" required>
+                                <button type="submit" class="btn btn-success">Save</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-        </div>
-
-    </div>
-
-
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No stocks are currently tracked.</p>
+    {% endif %}
 </div>
-
 {% endblock %}

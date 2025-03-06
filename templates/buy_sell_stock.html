@@ -1,76 +1,51 @@
 {% extends "user_base.html" %}
 
-{% block title %}Buying and Selling Stocks{% endblock %}
-
 {% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Buy & Sell Stocks</h2>
 
-<div class="row">
-    <div class="col-md-12">
-        <h1 class="display-4">Buying/Selling Stocks</h1>
-        <p class="lead">Select a stock below to buy or sell.</p>
+    {% if not stocks %}
+    <div class="alert alert-warning text-center" role="alert">
+        No stock data available. Please check back later.
     </div>
-</div>
+    {% else %}
 
-<!-- Flash Messages -->
-{% with messages = get_flashed_messages() %}
-    {% if messages %}
-        <div class="alert alert-success">
-            {{ messages[0] }}
-        </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Price ($)</th>
+                <th>Quantity Available</th>
+                <th>Last Updated</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="stockTable">
+            {% for stock in stocks %}
+            <tr>
+                <td>{{ stock.symbol }}</td>
+                <td>{{ "%.2f"|format(stock.price) }}</td>
+                <td>{{ stock.quantity }}</td>
+                <td>{{ stock.timestamp.strftime('%Y/%m/%d %H:%M') }}</td>
+                <td>
+                    <button class="btn btn-success btn-sm buy-btn" data-symbol="{{ stock.symbol }}" data-quantity="{{ stock.quantity }}">
+                        Buy
+                    </button>
+                    <button class="btn btn-danger btn-sm sell-btn" data-symbol="{{ stock.symbol }}" data-quantity="{{ stock.quantity }}">
+                        Sell
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
     {% endif %}
-{% endwith %}
 
-<!-- Stock List -->
-<div class="row mt-4">
-    <div class="col-md-12">
-        <table class="table table-bordered table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <th>Stock Symbol</th>
-                    <th>Price (USD)</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for stock in stocks %}
-                <tr>
-                    <td>{{ stock.symbol }}</td>
-                    <td>${{ "%.2f"|format(stock.price) }}</td>
-                    <td>
-                        <button class="btn btn-success btn-sm" onclick="tradeStock('{{ stock.symbol }}', 'buy')">Buy</button>
-                        <button class="btn btn-danger btn-sm" onclick="tradeStock('{{ stock.symbol }}', 'sell')">Sell</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="text-center mt-3">
+        <a href="{{ url_for('portfolio') }}" class="btn btn-primary">View Portfolio</a>
     </div>
 </div>
 
-<!-- Checkout Feature Card -->
-<div class="row mt-4">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Feature Five</h5>
-                <p class="card-text">Checkout process.</p>
-                <a href="#" class="btn btn-primary">Learn More</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Update Stock Prices Button -->
-<div class="row mt-4">
-    <div class="col-md-12 text-center">
-        <a href="{{ url_for('update_stocks') }}" class="btn btn-primary">Update Stock Prices</a>
-    </div>
-</div>
-
-<script>
-    function tradeStock(symbol, action) {
-        alert(`You chose to ${action.toUpperCase()} ${symbol}`);
-    }
-</script>
 
 {% endblock %}
