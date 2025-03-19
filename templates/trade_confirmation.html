@@ -1,0 +1,26 @@
+{% extends "user_base.html" %}
+
+{% block title %}Confirm Trade{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Confirm Trade</h2>
+    <p class="text-center">
+        <strong>Are you sure you want to {{ action }} {{ shares }} shares of {{ symbol }} for ${{ "%.2f"|format(total_cost) }}?</strong>
+    </p>
+
+    <p class="text-center text-muted">
+        Your balance after this trade will be: <strong>${{ "%.2f"|format(new_balance) }}</strong>
+    </p>
+
+    <form action="{{ url_for('execute_trade') }}" method="POST" class="text-center">
+        <input type="hidden" name="symbol" value="{{ symbol }}">
+        <input type="hidden" name="action" value="{{ action }}">
+        <input type="hidden" name="shares" value="{{ shares }}">
+        <input type="hidden" name="price" value="{{ price }}">
+        <input type="hidden" name="total_cost" value="{{ total_cost }}">
+        <button type="submit" class="btn btn-success">Confirm Trade</button>
+        <a href="{{ url_for('buy_sell_stock') }}" class="btn btn-danger">Cancel</a>
+    </form>
+</div>
+{% endblock %}
