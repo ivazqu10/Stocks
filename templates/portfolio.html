@@ -5,26 +5,49 @@
 {% block content %}
 
 <div class="container mt-4">
-    <h2 class="text-center">Welcome to Your Portfolio!</h2>
-    <p><strong>Your Current Balance is:</strong> ${{ "{:,.2f}".format(current_user.cash_balance) }}</p>
+    <h2 class="text-center">📈 Your Portfolio</h2>
+
+    <div class="alert alert-info">
+        <strong>Your Current Balance:</strong> <span class="text-success">${{ "{:,.2f}".format(current_user.cash_balance) }}</span>
+    </div>
+
+    <form action="{{ url_for('refresh_prices') }}" method="post">
+        <button type="submit" class="btn btn-primary mb-3">🔄 Refresh Sell Prices</button>
+    </form>
+
+    {% if current_user.portfolio %}
     <h3>Owned Stocks</h3>
-    <table class="table">
-        <thead>
+    <table class="table table-striped">
+        <thead class="thead-dark">
             <tr>
                 <th>Stock</th>
                 <th>Shares Owned</th>
+                <th>Current Price</th>
+                <th>Last Adjusted Sell Price</th>
+                <th>Total Value</th>
+                <th>Profit/Loss</th>
             </tr>
         </thead>
         <tbody>
             {% for stock in current_user.portfolio %}
+            {% set total_value = stock.shares_owned * stock.stock.price %}
+            {% set profit_loss = (stock.stock.price - stock.last_sell_price) * stock.shares_owned %}
             <tr>
-                <td>{{ stock.stock.symbol }}</td>
+                <td><strong>{{ stock.stock.symbol }}</strong></td>
                 <td>{{ stock.shares_owned }}</td>
+                <td>${{ "{:,.2f}".format(stock.stock.price) }}</td>
+                <td class="text-primary">${{ "{:,.2f}".format(stock.last_sell_price) if stock.last_sell_price > 0 else "N/A" }}</td>
+                <td>${{ "{:,.2f}".format(total_value) }}</td>
+                <td class="{% if profit_loss >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    ${{ "{:,.2f}".format(profit_loss) }}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <p class="text-muted">You don't own any stocks yet. Start investing today! 🚀</p>
+    {% endif %}
 </div>
-
 
 {% endblock %}

@@ -9,6 +9,7 @@ from functools import wraps
 import pandas as pd
 from datetime import datetime
 import pytz
+import random
 
 app = Flask(__name__)
 
@@ -37,7 +38,7 @@ class UserPortfolio(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     stock_id = db.Column(db.Integer, db.ForeignKey('stock_price.id'), nullable=False)
     shares_owned = db.Column(db.Integer, default=0)
-
+    last_sell_price = db.Column(db.Float, default=0.0)
     user = db.relationship('User', backref=db.backref('portfolio', lazy=True))
     stock = db.relationship('stock_price', backref=db.backref('holdings', lazy=True))
 
@@ -316,6 +317,8 @@ def trade_stock():
         user.cash_balance += total_sale_value
         stock.quantity += shares
 
+        user_portfolio.last_sell_price = new_price
+
         transaction = TransactionHistory(
             user_id=user.id,
             stock_id=stock.id,
@@ -329,8 +332,25 @@ def trade_stock():
         flash(f"Sold at adjusted price: ${new_price:.2f}", "info")
 
     db.session.commit()
-    flash(f"Transaction completed! Your new balance is ${user.cash_balance:.2f}.", "success")
+    flash(f"Transaction completed! Your new balance is ${user.cash_balance:.2f}.")
     return redirect(url_for("buy_sell_stock"))
+
+@app.route("/refresh_prices", methods=["POST"])
+@login_required
+def refresh_prices():
+    user = current_user
+    portfolios = UserPortfolio.query.filter_by(user_id=user.id).all()
+
+    for portfolio in portfolios:
+        if portfolio.shares_owned > 0:
+            # Generate a new random adjusted sell price within ±$5
+            price_adjustment = random.uniform(-5, 5)
+            new_sell_price = max(portfolio.stock.price + price_adjustment, 0.01)
+            portfolio.last_sell_price = new_sell_price
+
+    db.session.commit()
+    flash("Sell prices updated!", "success")
+    return redirect(url_for("portfolio"))
 
 @app.route("/trade_confirmation", methods=["POST"])
 @login_required
@@ -441,7 +461,7 @@ def execute_trade():
 @app.route("/funds_confirmation", methods=["POST"])
 @login_required
 def funds_confirmation():
-    action = request.form.get("action")  # "deposit" or "withdraw"
+    action = request.form.get("action") 
     amount = request.form.get("amount", type=float)
 
     if not action or not amount or amount <= 0:
@@ -465,7 +485,7 @@ def process_funds():
 
     # Remove commas before converting to float
     if amount:
-        amount = amount.replace(",", "")  # ✅ Remove commas from number
+        amount = amount.replace(",", "")  
 
     try:
         amount = float(amount)  # Convert to float safely
