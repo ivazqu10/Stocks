@@ -7,13 +7,13 @@
     <h2 class="text-center">Manage Stocks</h2>
 
     <form action="{{ url_for('admin_add_remove_stock') }}" method="POST" class="mb-4">
-        <h4>Add a Stock</h4>
+        <h4>Add a Stock:</h4>
         <input type="text" name="symbol" class="form-control mb-2" placeholder="Stock Symbol" required>
         <input type="number" name="quantity" class="form-control mb-2" min="1" placeholder="Quantity" required>
         <button type="submit" class="btn btn-primary">Add Stock</button>
     </form>
 
-    <h3>Tracked Stocks</h3>
+    <h3>Stocks Available:</h3>
     {% if stocks %}
     <table class="table table-bordered text-center">
         <thead>

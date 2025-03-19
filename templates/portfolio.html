@@ -4,20 +4,9 @@
 
 {% block content %}
 
-<div class="row">
-
-    <div class="col-md-12">
-
-        <h1 class="display-4">Welcome to your portfolio</h1>
-    </div>
-
-</div>
-
-
 <div class="container mt-4">
-    <h2>Your Portfolio</h2>
-    <p><strong>Balance:</strong> ${{ "%.2f"|format(current_user.cash_balance) }}</p>
-
+    <h2 class="text-center">Welcome to Your Portfolio!</h2>
+    <p><strong>Your Current Balance is:</strong> ${{ "{:,.2f}".format(current_user.cash_balance) }}</p>
     <h3>Owned Stocks</h3>
     <table class="table">
         <thead>

@@ -1,46 +1,25 @@
 {% extends "admin_base.html" %}
 
-{% block title %}Market Hours{% endblock %}
+{% block title %}Manage Market Hours (MST){% endblock %}
 
 {% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Manage Market Hours (MST)</h2>
 
-<div class="row">
-
-    <div class="col-md-12">
-
-        <h1 class="display-4">Changing the Market Hours</h1>
-
-        <p class="lead">market hours stuff here.</p>
-
-    </div>
-
-</div>
-
-<!-- Example Bootstrap Components -->
-
-<div class="row mt-4">
-
-    <!-- Card Example -->
-
-    <div class="col-md-4">
-
-        <div class="card">
-
-            <div class="card-body">
-
-                <h5 class="card-title">Feature Two</h5>
-
-                <p class="card-text">Changing the time when the market is open.</p>
-
-                <a href="#" class="btn btn-primary">Learn More</a>
-
-            </div>
-
+    <form method="POST">
+        <div class="mb-3">
+            <label for="open_time" class="form-label">Market Open Time (MST)</label>
+            <input type="time" name="open_time" class="form-control" value="{{ open_time }}" required>
         </div>
 
-    </div>
+        <div class="mb-3">
+            <label for="close_time" class="form-label">Market Close Time (MST)</label>
+            <input type="time" name="close_time" class="form-control" value="{{ close_time }}" required>
+        </div>
 
-
+        <button type="submit" class="btn btn-primary">Update Market Hours</button>
+    </form>
 </div>
-
 {% endblock %}
+
+

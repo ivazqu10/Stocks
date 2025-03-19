@@ -241,7 +241,7 @@ def trade_stock():
     user_portfolio = UserPortfolio.query.filter_by(user_id=user.id, stock_id=stock.id).first()
 
     if action == "buy":
-        total_cost = stock.price * shares  # Calculate the total cost of the purchase
+        total_cost = stock.price * shares
 
         if stock.quantity < shares:
             return jsonify({"success": False, "error": f"Not enough shares available. Only {stock.quantity} left."})
@@ -258,7 +258,7 @@ def trade_stock():
             new_entry = UserPortfolio(user_id=user.id, stock_id=stock.id, shares_owned=shares)
             db.session.add(new_entry)
 
-        # ✅ Log the buy transaction
+        #Log the buy transaction
         transaction = TransactionHistory(
             user_id=user.id,
             stock_id=stock.id,
@@ -278,7 +278,7 @@ def trade_stock():
         user.cash_balance += total_sale_value
         stock.quantity += shares
 
-        # ✅ Log the sell transaction
+        #Log the sell transaction
         transaction = TransactionHistory(
             user_id=user.id,
             stock_id=stock.id,

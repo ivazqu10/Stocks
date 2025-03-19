@@ -1,39 +1,19 @@
 {% extends "admin_base.html" %}
 
-{% block title %}Admin Dashboard{% endblock %}
+{% block title %}STTS-Admin Dashboard{% endblock %}
 
 {% block content %}
 
 {% if current_user.is_authenticated %}
-    <h2>Welcome, {{ current_user.username }}!</h2>
+    <h2>Welcome to your STTS Dashboard, {{ current_user.username }}!</h2>
+    {% if current_user.role == "admin" %}
+        <p>This is visible only to admins: Manage users, settings, etc.</p>
+    {% elif current_user.role == "user" %}
+        <p>This is visible only to users: Your profile info.</p>
+    {% endif %}
 {% else %}
     <h1>You are not logged in</h1>
 {% endif %}
-
-<!-- Example Bootstrap Components -->
-
-<div class="row mt-4">
-
-    <!-- Card Example -->
-
-    <div class="col-md-4">
-
-        <div class="card">
-
-            <div class="card-body">
-
-                <h5 class="card-title">Feature One</h5>
-
-                <p class="card-text">More Dashboard stuff but for the Admins.</p>
-
-                <a href="#" class="btn btn-primary">Learn More</a>
-
-            </div>
-
-        </div>
-
-    </div>
-
 
 </div>
 
