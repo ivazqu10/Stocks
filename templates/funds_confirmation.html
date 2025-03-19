@@ -1,0 +1,22 @@
+{% extends "user_base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Confirm Transaction</h2>
+    
+    <p class="text-center">
+        Are you sure you want to 
+        <strong>{{ "deposit" if action == "deposit" else "withdraw" }}</strong> 
+        ${{ amount }}
+    </p>
+
+    <form action="{{ url_for('process_funds') }}" method="POST">
+        <input type="hidden" name="action" value="{{ action }}">
+        <input type="hidden" name="amount" value="{{ amount }}">
+        <div class="text-center mt-3">
+            <button type="submit" class="btn btn-success">Confirm</button>
+            <a href="{{ url_for('funds') }}" class="btn btn-danger">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
