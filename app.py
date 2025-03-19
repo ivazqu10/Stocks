@@ -12,12 +12,12 @@ import pytz
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Madrid0329.@localhost/stocks_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:67mustang@localhost/stocks_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
 db = SQLAlchemy(app)
-# Class = Our Database Tables
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -188,9 +188,6 @@ def buy_sell_stock():
 
     return render_template("buy_sell_stock.html", stocks=stocks, market_open=market_open)
 
-
-
-
 def fetch_stock_prices():
     stock_symbols = [stock.symbol for stock in stock_price.query.all()]
     if not stock_symbols:
@@ -310,7 +307,11 @@ def trade_stock():
             flash("Not enough shares to sell.", "danger")
             return redirect(url_for("buy_sell_stock"))
 
-        total_sale_value = price * shares
+        
+        price_adjustment = random.uniform(-5, 5)
+        new_price = max(price + price_adjustment, 0.01)  
+
+        total_sale_value = new_price * shares
         user_portfolio.shares_owned -= shares
         user.cash_balance += total_sale_value
         stock.quantity += shares
@@ -320,13 +321,14 @@ def trade_stock():
             stock_id=stock.id,
             transaction_type="SELL",
             shares=shares,
-            price_per_share=price,
+            price_per_share=new_price,
             total_cost=total_sale_value
         )
         db.session.add(transaction)
 
-    db.session.commit()
+        flash(f"Sold at adjusted price: ${new_price:.2f}", "info")
 
+    db.session.commit()
     flash(f"Transaction completed! Your new balance is ${user.cash_balance:.2f}.", "success")
     return redirect(url_for("buy_sell_stock"))
 
