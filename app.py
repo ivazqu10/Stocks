@@ -13,7 +13,7 @@ import random
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:67mustang@localhost/stocks_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Madrid0329.@localhost/stocks_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
@@ -461,27 +461,39 @@ def execute_trade():
 @app.route("/funds_confirmation", methods=["POST"])
 @login_required
 def funds_confirmation():
-    action = request.form.get("action") 
-    amount = request.form.get("amount", type=float)
+    action = request.form.get("action")  # "deposit" or "withdraw"
+    amount = request.form.get("amount")
 
-    if not action or not amount or amount <= 0:
+    try:
+        amount = float(amount.replace(",", ""))  # Remove commas before converting
+    except (ValueError, TypeError):
+        flash("Invalid amount entered.", "danger")
+        return redirect(url_for("funds"))
+
+    if not action or amount <= 0:
         flash("Invalid transaction request.", "danger")
         return redirect(url_for("funds"))
 
-    # Prevent overdrafting if withdrawing
-    if action == "withdraw" and current_user.cash_balance < amount:
-        flash("Insufficient funds for withdrawal.", "danger")
-        return redirect(url_for("funds"))
+    # Calculate new balance before confirming the transaction
+    if action == "deposit":
+        new_balance = current_user.cash_balance + amount
+    elif action == "withdraw":
+        if current_user.cash_balance < amount:
+            flash("Insufficient funds for withdrawal.", "danger")
+            return redirect(url_for("funds"))
+        new_balance = current_user.cash_balance - amount
 
-    return render_template("funds_confirmation.html", action=action, amount=f"{amount:,.2f}")
+    return render_template("funds_confirmation.html", 
+                           action=action, 
+                           amount=f"{amount:,.2f}", 
+                           new_balance=f"{new_balance:,.2f}")
+
 
 @app.route("/process_funds", methods=["POST"])
 @login_required
 def process_funds():
     action = request.form.get("action")
     amount = request.form.get("amount")
-
-    print(f"DEBUG: Raw Data - action={action}, amount={amount}")  # Debugging Step 1
 
     # Remove commas before converting to float
     if amount:
@@ -493,13 +505,9 @@ def process_funds():
         flash("Invalid amount entered.", "danger")
         return redirect(url_for("funds"))
 
-    print(f"DEBUG: Converted Data - action={action}, amount={amount}")  # Debugging Step 2
-
     if not action or amount <= 0:
         flash("Invalid transaction request.", "danger")
         return redirect(url_for("funds"))
-
-    print(f"DEBUG: Before Commit - Balance: {current_user.cash_balance}")
 
     if action == "deposit":
         current_user.cash_balance += amount
@@ -516,7 +524,6 @@ def process_funds():
             return redirect(url_for("funds"))
 
     db.session.commit()
-    print(f"DEBUG: After Commit - Balance: {current_user.cash_balance}")  # Debugging Step 3
 
     return redirect(url_for("funds"))
 

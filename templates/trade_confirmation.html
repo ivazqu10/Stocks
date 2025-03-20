@@ -4,14 +4,15 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="text-center">Confirm Trade</h2>
-    <p class="text-center">
-        <strong>Are you sure you want to {{ action }} {{ shares }} shares of {{ symbol }} for ${{ "%.2f"|format(total_cost) }}?</strong>
+    <h2 class="text-center">📈 Confirm Trade 📈</h2>
+    <p class="text-center"
+        Are you sure you want to <strong>{{ action }} {{ shares }} shares of {{ symbol }}</strong> for <strong>${{ "%.2f"|format(total_cost) }}?</strong>
     </p>
 
     <p class="text-center text-muted">
         Your balance after this trade will be: <strong>${{ "%.2f"|format(new_balance) }}</strong>
     </p>
+    
 
     <form action="{{ url_for('execute_trade') }}" method="POST" class="text-center">
         <input type="hidden" name="symbol" value="{{ symbol }}">

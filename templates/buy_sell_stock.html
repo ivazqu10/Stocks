@@ -3,8 +3,10 @@
 {% block content %}
 
 <div class="container mt-4">
-    <h2 class="text-center"> Welcome to the Trade Page!</h2>
-    <p class="text-center"><strong>Your current Balance is:</strong> ${{ "{:,.2f}".format(current_user.cash_balance) }}</p>
+    <h2 class="text-center">📈 Welcome to the STTS Trade Page! 📈</h2>
+    <div class="alert alert-info">
+        <strong>Your Current Balance:</strong> <span class="text-success">${{ "{:,.2f}".format(current_user.cash_balance) }}</span>
+    </div>
     
     <div class="alert {{ 'alert-success' if market_open else 'alert-danger' }} text-center">
         Market is currently <strong>{{ 'OPEN' if market_open else 'CLOSED' }}</strong>.
