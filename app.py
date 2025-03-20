@@ -13,7 +13,7 @@ import random
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Madrid0329.@localhost/stocks_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:67mustang@localhost/stocks_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
@@ -46,7 +46,7 @@ class TransactionHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     stock_id = db.Column(db.Integer, db.ForeignKey('stock_price.id'), nullable=False)
-    transaction_type = db.Column(db.String(10), nullable=False)  # "BUY" or "SELL"
+    transaction_type = db.Column(db.String(10), nullable=False) 
     shares = db.Column(db.Integer, nullable=False)
     price_per_share = db.Column(db.Float, nullable=False)
     total_cost = db.Column(db.Float, nullable=False)
@@ -182,7 +182,7 @@ def edit_stock(stock_id):
 @login_required
 def buy_sell_stock():
     stocks = stock_price.query.all()
-    db.session.expire_all()  # Forces Flask to get fresh database data
+    db.session.expire_all()  
     market_hours = MarketHours.query.first()
 
     market_open = market_hours.is_market_open() if market_hours else False
@@ -343,7 +343,6 @@ def refresh_prices():
 
     for portfolio in portfolios:
         if portfolio.shares_owned > 0:
-            # Generate a new random adjusted sell price within ±$5
             price_adjustment = random.uniform(-5, 5)
             new_sell_price = max(portfolio.stock.price + price_adjustment, 0.01)
             portfolio.last_sell_price = new_sell_price
@@ -355,6 +354,8 @@ def refresh_prices():
 @app.route("/trade_confirmation", methods=["POST"])
 @login_required
 def trade_confirmation():
+    print(f"Received Trade Request: {request.form}")  # Debugging
+
     symbol = request.form.get("symbol")
     action = request.form.get("action")
     shares = request.form.get("shares")
@@ -369,27 +370,38 @@ def trade_confirmation():
     total_cost = shares * price
 
     user = current_user
-    new_balance = user.cash_balance
+    stock = stock_price.query.filter_by(symbol=symbol).first()  # Retrieve stock
+
+    if not stock:
+        flash("Stock not found.", "danger")
+        return redirect(url_for("buy_sell_stock"))
 
     if action == "buy":
-        if new_balance < total_cost:
-            flash("Insufficient funds for this trade.", "danger")
+        if stock.quantity < shares:
+            flash(f"Not enough shares available! Only {stock.quantity} left.", "danger")
             return redirect(url_for("buy_sell_stock"))
-        new_balance -= total_cost
+
+        if user.cash_balance < total_cost:
+            flash("Insufficient funds.", "danger")
+            return redirect(url_for("buy_sell_stock"))
+
+        new_balance = user.cash_balance - total_cost
 
     elif action == "sell":
-        stock = UserPortfolio.query.filter_by(user_id=user.id, stock_id=stock_price.query.filter_by(symbol=symbol).first().id).first()
-        if not stock or stock.shares_owned < shares:
+        user_portfolio = UserPortfolio.query.filter_by(user_id=user.id, stock_id=stock.id).first()
+        if not user_portfolio or user_portfolio.shares_owned < shares:
             flash("Not enough shares to sell.", "danger")
             return redirect(url_for("buy_sell_stock"))
-        new_balance += total_cost
+
+        new_balance = user.cash_balance + total_cost
 
     return render_template("trade_confirmation.html", symbol=symbol, action=action, shares=shares, price=price, total_cost=total_cost, new_balance=new_balance)
-
 
 @app.route("/execute_trade", methods=["POST"])
 @login_required
 def execute_trade():
+    print(f"Executing Trade: {request.form}")
+
     symbol = request.form.get("symbol")
     action = request.form.get("action")
     shares = int(request.form.get("shares"))
@@ -453,10 +465,10 @@ def execute_trade():
         )
         db.session.add(transaction)
 
-    db.session.commit()
+    db.session.commit() 
+
     flash(f"Transaction completed! Your new balance is ${user.cash_balance:.2f}.", "success")
     return redirect(url_for("buy_sell_stock"))
-
 
 @app.route("/funds_confirmation", methods=["POST"])
 @login_required
@@ -465,7 +477,7 @@ def funds_confirmation():
     amount = request.form.get("amount")
 
     try:
-        amount = float(amount.replace(",", ""))  # Remove commas before converting
+        amount = float(amount.replace(",", ""))  
     except (ValueError, TypeError):
         flash("Invalid amount entered.", "danger")
         return redirect(url_for("funds"))
