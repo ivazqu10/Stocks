@@ -3,7 +3,7 @@
 {% block content %}
 
 <div class="container mt-4">
-    <h2 class="text-center">📈 Welcome to the STTS Trade Page! 📈</h2>
+    <h2 class="text-center">📈 Welcome to the Trade Page! 📈</h2>
     <div class="alert alert-info">
         <strong>Your Current Balance:</strong> <span class="text-success">${{ "{:,.2f}".format(current_user.cash_balance) }}</span>
     </div>
@@ -16,42 +16,43 @@
         No stock data available. Please check back later.
     </div>
     {% else %}
-
-    <table class="table table-bordered text-center">
-        <thead>
-            <tr>
-                <th>Symbol</th>
-                <th>Price ($)</th>
-                <th>Quantity Available</th>
-                <th>Last Updated</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for stock in stocks %}
-            <tr>
-                <td><strong>{{ stock.symbol }}</strong></td>
-                <td>${{ "%.2f"|format(stock.price) }}</td>
-                <td>{{ stock.quantity }}</td>
-                <td>{{ stock.timestamp.strftime('%Y/%m/%d %H:%M') }}</td>
-                <td>
-                    <form action="{{ url_for('trade_confirmation') }}" method="POST" class="d-flex">
-                        <input type="hidden" name="symbol" value="{{ stock.symbol }}">
-                        <input type="hidden" name="price" value="{{ stock.price }}">
-                        
-                        <!-- Single Input Field for Buy & Sell -->
-                        <input type="number" name="shares" min="1" class="form-control me-2" placeholder="Shares" required>
-                        <!-- Buy Button -->
-                        <button type="submit" name="action" value="buy" class="btn btn-success btn-sm me-2" {% if not market_open %}disabled{% endif %}>Buy</button>
-                        <!-- Sell Button -->
-                        <button type="submit" name="action" value="sell" class="btn btn-danger btn-sm" {% if not market_open %}disabled{% endif %}>Sell</button>
-                        
-                    </form>
-                </td>                                                        
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="table table-bordered text-center">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Price ($)</th>
+                    <th>Quantity Available</th>
+                    <th>Last Updated</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stock in stocks %}
+                <tr>
+                    <td><strong>{{ stock.symbol }}</strong></td>
+                    <td>${{ "%.2f"|format(stock.price) }}</td>
+                    <td>{{ stock.quantity }}</td>
+                    <td>{{ stock.timestamp.strftime('%Y/%m/%d %H:%M') }}</td>
+                    <td>
+                        <form action="{{ url_for('trade_confirmation') }}" method="POST" class="d-flex">
+                            <input type="hidden" name="symbol" value="{{ stock.symbol }}">
+                            <input type="hidden" name="price" value="{{ stock.price }}">
+                            
+                            <!-- Single Input Field for Buy & Sell -->
+                            <input type="number" name="shares" min="1" class="form-control me-2" placeholder="Shares" required>
+                            <!-- Buy Button -->
+                            <button type="submit" name="action" value="buy" class="btn btn-success btn-sm me-2" {% if not market_open %}disabled{% endif %}>Buy</button>
+                            <!-- Sell Button -->
+                            <button type="submit" name="action" value="sell" class="btn btn-danger btn-sm" {% if not market_open %}disabled{% endif %}>Sell</button>
+                            
+                        </form>
+                    </td>                                                        
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% endif %}
 
     <div class="text-center mt-3">
