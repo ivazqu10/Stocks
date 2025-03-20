@@ -27,7 +27,6 @@
                     <th>Current Price ($)</th>
                     <th>Last Sell Price ($)</th>
                     <th>Quantity Available</th>
-                    <th>Last Updated</th>
                     <th>Trade</th>
                 </tr>
             </thead>
@@ -37,15 +36,6 @@
                     <td><strong>{{ stock.symbol }}</strong></td>
                     <td>${{ "%.2f"|format(stock.price) }}</td>
                     
-                    <!-- Last Sell Price: Uses stored backend value -->
-                    <td class="text-primary">
-                        {% if stock.holdings and stock.holdings[0].last_sell_price > 0 %}
-                            ${{ "%.2f"|format(stock.holdings[0].last_sell_price) }}
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-
                     <td>{{ stock.quantity }}</td>
                     <td>{{ stock.timestamp.strftime('%Y/%m/%d %H:%M') }}</td>
                     
