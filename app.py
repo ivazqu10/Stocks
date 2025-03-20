@@ -249,6 +249,10 @@ def login():
         flash("Invalid username or password!", "danger")
     return render_template('login.html')
 
+def get_adjusted_price(original_price):
+    price_adjustment = random.uniform(-5, 5)
+    return max(original_price + price_adjustment, 0.01)  
+
 @app.route("/trade_stock", methods=["POST"])
 @login_required
 def trade_stock():
@@ -308,28 +312,26 @@ def trade_stock():
             flash("Not enough shares to sell.", "danger")
             return redirect(url_for("buy_sell_stock"))
 
-        
-        price_adjustment = random.uniform(-5, 5)
-        new_price = max(price + price_adjustment, 0.01)  
+        adjusted_price = get_adjusted_price(price)  # Ensure consistent sell price
 
-        total_sale_value = new_price * shares
+        total_sale_value = adjusted_price * shares
         user_portfolio.shares_owned -= shares
         user.cash_balance += total_sale_value
         stock.quantity += shares
 
-        user_portfolio.last_sell_price = new_price
+        user_portfolio.last_sell_price = adjusted_price  # Store adjusted price
 
         transaction = TransactionHistory(
             user_id=user.id,
             stock_id=stock.id,
             transaction_type="SELL",
             shares=shares,
-            price_per_share=new_price,
+            price_per_share=adjusted_price,
             total_cost=total_sale_value
         )
         db.session.add(transaction)
 
-        flash(f"Sold at adjusted price: ${new_price:.2f}", "info")
+        flash(f"Sold at adjusted price: ${adjusted_price:.2f}", "info")
 
     db.session.commit()
     flash(f"Transaction completed! Your new balance is ${user.cash_balance:.2f}.")
@@ -343,18 +345,17 @@ def refresh_prices():
 
     for portfolio in portfolios:
         if portfolio.shares_owned > 0:
-            price_adjustment = random.uniform(-5, 5)
-            new_sell_price = max(portfolio.stock.price + price_adjustment, 0.01)
-            portfolio.last_sell_price = new_sell_price
+            portfolio.last_sell_price = get_adjusted_price(portfolio.stock.price) 
 
     db.session.commit()
-    flash("Sell prices updated!", "success")
+    flash("Sell prices updated!")
     return redirect(url_for("portfolio"))
+
 
 @app.route("/trade_confirmation", methods=["POST"])
 @login_required
 def trade_confirmation():
-    print(f"Received Trade Request: {request.form}")  # Debugging
+    print(f"Received Trade Request: {request.form}") 
 
     symbol = request.form.get("symbol")
     action = request.form.get("action")

@@ -8,7 +8,8 @@
     <h2 class="text-center">📈 Welcome to Your Portfolio 📈</h2>
 
     <div class="alert alert-info">
-        <strong>Your Current Balance:</strong> <span class="text-success">${{ "{:,.2f}".format(current_user.cash_balance) }}</span>
+        <strong>Your Current Balance:</strong> 
+        <span class="text-success">${{ "{:,.2f}".format(current_user.cash_balance) }}</span>
     </div>
 
     {% if current_user.portfolio %}
@@ -28,25 +29,38 @@
             </thead>
             <tbody>
                 {% for stock in current_user.portfolio %}
-                {% set total_value = stock.shares_owned * stock.stock.price %}
-                {% set profit_loss = (stock.stock.price - stock.last_sell_price) * stock.shares_owned %}
+                {% set current_price = stock.stock.price %}
+                {% set last_sell_price = stock.last_sell_price if stock.last_sell_price > 0 else current_price %}
+                {% set total_value = stock.shares_owned * last_sell_price %}
+                {% set profit_loss = (last_sell_price - current_price) * stock.shares_owned %}
+                
                 <tr>
                     <td><strong>{{ stock.stock.symbol }}</strong></td>
                     <td>{{ stock.shares_owned }}</td>
-                    <td>${{ "{:,.2f}".format(stock.stock.price) }}</td>
-                    <td class="text-primary">${{ "{:,.2f}".format(stock.last_sell_price) if stock.last_sell_price > 0 else "N/A" }}</td>
+                    <td>${{ "{:,.2f}".format(current_price) }}</td>
+                    
+                    <!-- Display last sell price if available -->
+                    <td class="text-primary">
+                        ${{ "{:,.2f}".format(last_sell_price) }}
+                    </td>
+
                     <td>${{ "{:,.2f}".format(total_value) }}</td>
+
+                    <!-- Profit/Loss Display -->
                     <td class="{% if profit_loss >= 0 %}text-success{% else %}text-danger{% endif %}">
                         ${{ "{:,.2f}".format(profit_loss) }}
                     </td>
+
                     <td class="align-middle">
                         <form action="{{ url_for('trade_confirmation') }}" method="post">
                             <input type="hidden" name="symbol" value="{{ stock.stock.symbol }}">
-                            <input type="hidden" name="price" value="{{ stock.stock.price }}">
+                            <input type="hidden" name="price" value="{{ last_sell_price }}">
                             <input type="hidden" name="action" value="sell">
                             <input type="hidden" name="stock_id" value="{{ stock.stock.id }}">
-                            
-                            <input type="number" name="shares" min="1" max="{{ stock.shares_owned }}" required>
+
+                            <input type="number" name="shares" min="1" max="{{ stock.shares_owned }}" 
+                                class="form-control text-center" 
+                                placeholder="Shares" required style="width: 90px;">
                             
                             <button type="submit" class="btn btn-danger btn-sm">Sell</button>
                         </form>
@@ -59,12 +73,12 @@
     {% else %}
     <p class="text-muted">You don't own any stocks yet. Start investing today! 🚀</p>
     {% endif %}
+
     <div class="d-flex justify-content-end">
         <form action="{{ url_for('refresh_prices') }}" method="post">
             <button type="submit" class="btn btn-primary mb-3">🔄 Refresh Sell Prices</button>
         </form>
     </div>
-    
 </div>
 
 {% endblock %}

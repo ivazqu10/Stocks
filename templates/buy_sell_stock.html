@@ -4,13 +4,16 @@
 
 <div class="container mt-4">
     <h2 class="text-center">📈 Welcome to the Trade Page! 📈</h2>
+    
     <div class="alert alert-info">
-        <strong>Your Current Balance:</strong> <span class="text-success">${{ "{:,.2f}".format(current_user.cash_balance) }}</span>
+        <strong>Your Current Balance:</strong> 
+        <span class="text-success">${{ "{:,.2f}".format(current_user.cash_balance) }}</span>
     </div>
     
     <div class="alert {{ 'alert-success' if market_open else 'alert-danger' }} text-center">
         Market is currently <strong>{{ 'OPEN' if market_open else 'CLOSED' }}</strong>.
     </div>
+
     {% if not stocks %}
     <div class="alert alert-warning text-center" role="alert">
         No stock data available. Please check back later.
@@ -18,13 +21,14 @@
     {% else %}
     <div class="table-responsive">
         <table class="table table-bordered text-center">
-            <thead>
+            <thead class="thead-dark">
                 <tr>
                     <th>Symbol</th>
-                    <th>Price ($)</th>
+                    <th>Current Price ($)</th>
+                    <th>Last Sell Price ($)</th>
                     <th>Quantity Available</th>
                     <th>Last Updated</th>
-                    <th>Action</th>
+                    <th>Trade</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,8 +36,19 @@
                 <tr>
                     <td><strong>{{ stock.symbol }}</strong></td>
                     <td>${{ "%.2f"|format(stock.price) }}</td>
+                    
+                    <!-- Last Sell Price: Uses stored backend value -->
+                    <td class="text-primary">
+                        {% if stock.holdings and stock.holdings[0].last_sell_price > 0 %}
+                            ${{ "%.2f"|format(stock.holdings[0].last_sell_price) }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+
                     <td>{{ stock.quantity }}</td>
                     <td>{{ stock.timestamp.strftime('%Y/%m/%d %H:%M') }}</td>
+                    
                     <td>
                         <form action="{{ url_for('trade_confirmation') }}" method="POST" class="d-flex">
                             <input type="hidden" name="symbol" value="{{ stock.symbol }}">
@@ -41,13 +56,14 @@
                             
                             <!-- Single Input Field for Buy & Sell -->
                             <input type="number" name="shares" min="1" class="form-control me-2" placeholder="Shares" required>
+                            
                             <!-- Buy Button -->
                             <button type="submit" name="action" value="buy" class="btn btn-success btn-sm me-2" {% if not market_open %}disabled{% endif %}>Buy</button>
+                            
                             <!-- Sell Button -->
                             <button type="submit" name="action" value="sell" class="btn btn-danger btn-sm" {% if not market_open %}disabled{% endif %}>Sell</button>
-                            
                         </form>
-                    </td>                                                        
+                    </td>                                                         
                 </tr>
                 {% endfor %}
             </tbody>
@@ -61,4 +77,5 @@
 </div>
 
 {% endblock %}
+
 
