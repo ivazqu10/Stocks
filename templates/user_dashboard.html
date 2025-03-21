@@ -17,6 +17,51 @@
     <h1>You are not logged in</h1>
 {% endif %}
 
+<div class="container mt-5">
+    {% if current_user.is_authenticated %}
+        <h2 class="text-center">Welcome to STTS, {{ current_user.username }}!</h2>
+        <p class="text-muted text-center mt-3">STTS is your comprehensive stock trading system. Whether you are managing the trading environment as an administrator or making investment decisions as a customer, this platform has all the tools to meet your needs.</p>
+        
+        {% if current_user.role == "admin" %}
+            <h4 class="text-center text-info mt-4">Administrator Dashboard</h4>
+            <p class="text-center">As an administrator, you can manage the stock market by creating and managing stocks, setting market hours, and overseeing the system.</p>
+            <div class="row text-center mt-3">
+                <div class="col-md-4">
+                    <a href="{{ url_for('manage_stocks') }}" class="btn btn-primary">Create & Manage Stocks</a>
+                    <p class="mt-2">Add new stocks with details such as company name, stock ticker, initial price, and volume.</p>
+                </div>
+                <div class="col-md-4">
+                    <a href="{{ url_for('set_market_hours') }}" class="btn btn-secondary">Set Market Hours</a>
+                    <p class="mt-2">Define trading hours and ensure trades are only executed during open hours.</p>
+                </div>
+                <div class="col-md-4">
+                    <a href="{{ url_for('view_system_logs') }}" class="btn btn-danger">View System Logs</a>
+                    <p class="mt-2">Monitor system activity and ensure smooth operations.</p>
+                </div>
+            </div>
+        {% elif current_user.role == "user" %}
+            <h4 class="text-center text-success mt-4">Customer Dashboard</h4>
+            <p class="text-center">As a customer, you can easily manage your investments, buy and sell stocks, and track your portfolio—all in one place.</p>
+            <div class="row text-center mt-3">
+                <div class="col-md-4">
+                    <a href="{{ url_for('portfolio') }}" class="btn btn-success">My Portfolio</a>
+                    <p class="mt-2">View and manage your stock holdings and check their performance in real-time.</p>
+                </div>
+                <div class="col-md-4">
+                    <a href="{{ url_for('buy_sell_stock') }}" class="btn btn-info">Trade Stocks</a>
+                    <p class="mt-2">Buy and sell stocks effortlessly at market price, with the option to cancel unexecuted orders.</p>
+                </div>
+                <div class="col-md-4">
+                    <a href="{{ url_for('funds') }}" class="btn btn-warning">Manage Funds</a>
+                    <p class="mt-2">Deposit or withdraw funds and review your financial transaction history.</p>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <h1 class="text-center">Welcome to STTS!</h1>
+        <p class="text-center">STTS empowers users to trade stocks seamlessly. Sign up today and take the first step in managing your investments. Please <a href="{{ url_for('login') }}">log in</a> or <a href="{{ url_for('register') }}">register</a> to access the platform.</p>
+    {% endif %}
+</div>
 
 {% endblock %}
 
