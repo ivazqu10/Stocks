@@ -5,17 +5,6 @@
 {% block content %}
 
 
-<!-- Conditional Rendering based on Authentication and Role -->
-{% if current_user.is_authenticated %}
-    <h2>Welcome to your STTS Dashboard,  {{ current_user.username }}!</h2>
-    {% if current_user.role == "admin" %}
-        <p>This is visible only to admins: Manage users, settings, etc.</p>
-    {% elif current_user.role == "user" %}
-        <p>This is visible only to users: Your profile info.</p>
-    {% endif %}
-{% else %}
-    <h1>You are not logged in</h1>
-{% endif %}
 
 <div class="container mt-5">
     {% if current_user.is_authenticated %}
