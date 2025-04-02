@@ -1,6 +1,6 @@
-{% extends "user_base.html" %}
+{% extends "user_base.html" %} 
 
-{% block title %}STTS-User Dashboard{% endblock %}
+{% block title %} STTS-User Dashboard {% endblock %}
 
 {% block content %}
 
@@ -16,15 +16,15 @@
             <p class="text-center">As an administrator, you can manage the stock market by creating and managing stocks, setting market hours, and overseeing the system.</p>
             <div class="row text-center mt-3">
                 <div class="col-md-4">
-                    <a href="{{ url_for('manage_stocks') }}" class="btn btn-primary">Create & Manage Stocks</a>
+                    <a href="{{ url_for('admin_add_remove_stock') }}" class="btn btn-primary">Create & Manage Stocks</a>
                     <p class="mt-2">Add new stocks with details such as company name, stock ticker, initial price, and volume.</p>
                 </div>
                 <div class="col-md-4">
-                    <a href="{{ url_for('set_market_hours') }}" class="btn btn-secondary">Set Market Hours</a>
+                    <a href="{{ url_for('admin_market_hours') }}" class="btn btn-secondary">Set Market Hours</a>
                     <p class="mt-2">Define trading hours and ensure trades are only executed during open hours.</p>
                 </div>
                 <div class="col-md-4">
-                    <a href="{{ url_for('view_system_logs') }}" class="btn btn-danger">View System Logs</a>
+                    <a href="{{ url_for('admin_logs') }}" class="btn btn-danger">View System Logs</a>
                     <p class="mt-2">Monitor system activity and ensure smooth operations.</p>
                 </div>
             </div>
