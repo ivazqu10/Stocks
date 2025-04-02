@@ -7,36 +7,40 @@
     <h2 class="text-center">All User Transactions</h2>
 
     {% if transactions %}
-    <table class="table table-bordered text-center">
-        <thead>
-            <tr>
-                <th>User</th>
-                <th>Stock</th>
-                <th>Type</th>
-                <th>Shares</th>
-                <th>Price per Share</th>
-                <th>Total Cost</th>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for transaction in transactions %}
-            <tr>
-                <td>{{ transaction.user.username }}</td>
-                <td>{{ transaction.stock.symbol }}</td>
-                <td>{{ transaction.transaction_type }}</td>
-                <td>{{ transaction.shares }}</td>
-                <td>${{ "%.2f"|format(transaction.price_per_share) }}</td>
-                <td>${{ "%.2f"|format(transaction.total_cost) }}</td>
-                <td>{{ transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+        <table class="table table-bordered text-center">
+            <thead class="table-light position-sticky top-0">
+                <tr>
+                    <th>User</th>
+                    <th>Stock</th>
+                    <th>Type</th>
+                    <th>Shares</th>
+                    <th>Price per Share</th>
+                    <th>Total Cost</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td>{{ transaction.user.username }}</td>
+                    <td>{{ transaction.stock.symbol }}</td>
+                    <td>
+                        <span class="badge {% if transaction.transaction_type == 'Buy' %}bg-success{% elif transaction.transaction_type == 'Sell' %}bg-danger{% else %}bg-secondary{% endif %}">
+                            {{ transaction.transaction_type }}
+                        </span>
+                    </td>
+                    <td>{{ transaction.shares }}</td>
+                    <td>${{ "%.2f"|format(transaction.price_per_share) }}</td>
+                    <td>${{ "%.2f"|format(transaction.total_cost) }}</td>
+                    <td>{{ transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
     <p class="text-center text-muted">No transactions recorded yet.</p>
     {% endif %}
 </div>
-
-
 {% endblock %}
