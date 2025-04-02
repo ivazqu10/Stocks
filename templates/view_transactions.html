@@ -1,0 +1,47 @@
+{% extends "admin_base.html" %}
+
+{% block title %}STTS Transaction History{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">📈 STTS Transaction History 📈</h2>
+
+    {% if transactions %}
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered text-center">
+            <thead>
+                <tr>
+                    <th>Stock</th>
+                    <th>Type</th>
+                    <th>Shares</th>
+                    <th>Price per Share</th>
+                    <th>Total Cost</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td>{{ transaction.stock.symbol }}</td>
+                    <td>{{ transaction.transaction_type }}</td>
+                    <td>{{ transaction.shares }}</td>
+                    <td>${{ "%.2f"|format(transaction.price_per_share) }}</td>
+                    <td>${{ "%.2f"|format(transaction.total_cost) }}</td>
+                    <td>{{ transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-center text-muted">No transactions recorded yet.</p>
+    {% endif %}
+
+    <!-- Back Button -->
+    <div class="text-center mt-4">
+        <a href="{{ url_for('admin_account_management') }}" class="btn btn-secondary btn-lg">
+             Back to Account Management
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Delete User{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="display-4 text-danger">Confirm Delete</h1>
+    <p class="lead">Are you sure you want to delete the user <strong>{{ user.username }}</strong>?</p>
+
+    <div class="mt-4">
+        <!-- Cancel Button -->
+        <a href="{{ url_for('admin_account_management') }}" class="btn btn-secondary">
+            Cancel
+        </a>
+
+        <!-- Confirm Delete Button -->
+        <form method="POST" action="{{ url_for('delete_user', id=user.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

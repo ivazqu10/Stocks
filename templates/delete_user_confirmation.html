@@ -1,0 +1,25 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Delete User{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">❌ Confirm Deletion ❌</h2>
+    
+    <p class="text-center">
+        Are you sure you want to delete the account of 
+        <strong>{{ user.username }}</strong>?
+    </p>
+
+    <p class="text-center text-danger">
+        This action is irreversible. Once deleted, all data associated with this user will be permanently removed.
+    </p>
+
+    <form action="{{ url_for('delete_user', id=user.id) }}" method="POST" class="text-center">
+        <input type="hidden" name="id" value="{{ user.id }}">
+        <button type="submit" class="btn btn-danger">Confirm Delete</button>
+        <a href="{{ url_for('admin_account_management') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+{% endblock %}
