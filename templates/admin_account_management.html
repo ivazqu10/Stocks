@@ -1,46 +1,37 @@
 {% extends "admin_base.html" %}
 
-{% block title %}Accounts{% endblock %}
+{% block title %}Admin Account Management{% endblock %}
 
 {% block content %}
+<div class="container mt-4">
+    <h1 class="display-4">User Accounts</h1>
+    <p class="lead">List of all users in the database:</p>
+    <table class="table table-bordered table-striped">
+        <thead class="thead-dark">
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.role }}</td>
+                <td>
+                    <a href="{{ url_for('view_transactions', id=user.id) }}" class="btn btn-info btn-sm">View</a>
+                    <a href="{{ url_for('edit_user', id=user.id) }}" class="btn btn-warning btn-sm">Edit</a>
+                    <a href="{{ url_for('delete_user_confirmation', id=user.id) }}" class="btn btn-danger btn-sm">Delete</a>
 
-<div class="row">
-
-    <div class="col-md-12">
-
-        <h1 class="display-4">All account's on the Stock Exchange</h1>
-
-        <p class="lead">All accounts</p>
-
-    </div>
-
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
-
-<!-- Example Bootstrap Components -->
-
-<div class="row mt-4">
-
-    <!-- Card Example -->
-
-    <div class="col-md-4">
-
-        <div class="card">
-
-            <div class="card-body">
-
-                <h5 class="card-title">Feature Three</h5>
-
-                <p class="card-text">Delete or modify accounts.</p>
-
-                <a href="#" class="btn btn-primary">Learn More</a>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-</div>
-
 {% endblock %}

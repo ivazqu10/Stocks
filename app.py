@@ -13,7 +13,7 @@ import random
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:67mustang@localhost/stocks_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Jaman3240@localhost/stocks_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
@@ -22,6 +22,7 @@ db = SQLAlchemy(app)
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(50), default="user", nullable=False)
     cash_balance = db.Column(db.Float, default=0.0) 
@@ -218,18 +219,33 @@ def user_dashboard():
 def register():
     if request.method == 'POST':
         username = request.form['username']
+        email = request.form.get('email')  # Capture the email input from the form
         password = generate_password_hash(request.form['password'])
 
+        # Validate email
+        if not email:
+            flash("Email is required!", "danger")
+            return redirect(url_for('register'))
+
+        # Check if username already exists
         if User.query.filter_by(username=username).first():
             flash("Username already exists!", "danger")
             return redirect(url_for('register'))
 
-        new_user = User(username=username, password=password)
+        # Check if email already exists
+        if User.query.filter_by(email=email).first():
+            flash("Email already exists!", "danger")
+            return redirect(url_for('register'))
+
+        # Create new user with email
+        new_user = User(username=username, email=email, password=password)
         db.session.add(new_user)
         db.session.commit()
         flash("Registration successful! Please login.", "success")
         return redirect(url_for('login'))
+
     return render_template('register.html')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -636,7 +652,57 @@ def admin_market_hours():
 @login_required
 @admin_required
 def admin_account_management():
-    return render_template('admin_account_management.html')
+    users = User.query.all()  # Query all users from the database
+    return render_template('admin_account_management.html', users=users)
+
+@app.route('/view_transactions/<int:id>', methods=['GET'])
+@login_required
+@admin_required
+def view_transactions(id):
+    # Fetch the user by their ID or return a 404 error if not found
+    user = User.query.get_or_404(id)
+    
+    # Retrieve the user's transactions (replace this with actual logic if needed)
+    transactions = user.transactions
+
+    # Render the 'view_transactions.html' page with the required context
+    return render_template('view_transactions.html', user=user, transactions=transactions)
+
+
+@app.route('/edit_user/<int:id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_user(id):
+    user = User.query.get_or_404(id)  # Get the user by ID
+    if request.method == 'POST':
+        user.username = request.form['username']
+        user.email = request.form['email']
+        user.role = request.form['role']
+        db.session.commit()
+        flash("User updated successfully!", "success")
+        return redirect(url_for('admin_account_management'))
+    return render_template('edit_user.html', user=user)
+
+@app.route('/delete_user/<int:id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def delete_user(id):
+    user = User.query.get_or_404(id)
+    if request.method == 'POST':
+        db.session.delete(user)
+        db.session.commit()
+        flash(f"User {user.username} has been deleted successfully!", "success")
+        return redirect(url_for('admin_account_management'))
+    # Render confirmation page for GET requests
+    return render_template('delete_user.html', user=user)
+
+@app.route('/delete_user_confirmation/<int:id>', methods=['GET'])
+@login_required
+@admin_required
+def delete_user_confirmation(id):
+    user = User.query.get_or_404(id)
+    return render_template('delete_user_confirmation.html', user=user)
+
 
 @app.route('/logout')
 @login_required
