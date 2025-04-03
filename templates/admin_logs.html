@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="text-center">All User Transactions</h2>
+    <h2 class="text-center mb-4">All User Transactions</h2>
 
     {% if transactions %}
-    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+    <div class="table-responsive mb-5" style="max-height: 500px; overflow-y: auto;">
         <table class="table table-bordered text-center">
             <thead class="table-light position-sticky top-0">
                 <tr>
@@ -41,6 +41,64 @@
     </div>
     {% else %}
     <p class="text-center text-muted">No transactions recorded yet.</p>
+    {% endif %}
+
+    <h2 class="text-center mb-3">Transaction Logs</h2>
+    {% if transaction_logs %}
+    <div class="table-responsive mb-5">
+        <table class="table table-bordered text-center">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Amount</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transaction_logs %}
+                <tr>
+                    <td>{{ t.id }}</td>
+                    <td>{{ t.user.username }}</td>
+                    <td>{{ t.action }}</td>
+                    <td>{{ t.amount }}</td>
+                    <td>{{ t.timestamp }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-center text-muted">No transaction logs available.</p>
+    {% endif %}
+
+    <h2 class="text-center mb-3">Activity Logs</h2>
+    {% if logs %}
+    <div class="table-responsive">
+        <table class="table table-bordered text-center">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Activity</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.id }}</td>
+                    <td>{{ log.user.username }}</td>
+                    <td>{{ log.activity }}</td>
+                    <td>{{ log.timestamp }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-center text-muted">No activity logs found.</p>
     {% endif %}
 </div>
 {% endblock %}

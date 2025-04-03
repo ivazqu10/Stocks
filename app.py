@@ -13,7 +13,7 @@ import random
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Jaman3240@localhost/stocks_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:67mustang@localhost/stocks_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
@@ -52,24 +52,27 @@ class TransactionHistory(db.Model):
     price_per_share = db.Column(db.Float, nullable=False)
     total_cost = db.Column(db.Float, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
     user = db.relationship('User', backref=db.backref('transactions', lazy=True))
     stock = db.relationship('stock_price', backref=db.backref('transactions', lazy=True))
 
 class MarketHours(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    open_time = db.Column(db.Time, nullable=False)  # Stored in UTC
-    close_time = db.Column(db.Time, nullable=False)  # Stored in UTC
-
+    open_time = db.Column(db.Time, nullable=False)  
+    close_time = db.Column(db.Time, nullable=False)  
     def is_market_open(self):
-        now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)  # Current time in UTC
-        now_mst = now_utc.astimezone(MST)  # Convert UTC to MST
-
-        # Convert stored time (UTC) to full datetime for conversion
+        now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)  
+        now_mst = now_utc.astimezone(MST) 
         open_time_mst = datetime.combine(datetime.utcnow(), self.open_time).replace(tzinfo=pytz.utc).astimezone(MST).time()
         close_time_mst = datetime.combine(datetime.utcnow(), self.close_time).replace(tzinfo=pytz.utc).astimezone(MST).time()
-
         return open_time_mst <= now_mst.time() <= close_time_mst
+
+class Log(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    username = db.Column(db.String(150))
+    action = db.Column(db.String(10))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.relationship('User', backref=db.backref('logs', lazy=True))
 
 with app.app_context():
     db.create_all()
@@ -246,6 +249,9 @@ def register():
 
     return render_template('register.html')
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -257,12 +263,22 @@ def login():
         if user and check_password_hash(user.password, password):
             login_user(user)
             flash("Login successful!", "success")
+            db.session.add(Log(user_id=user.id, username=user.username, action="login"))
+            db.session.commit()
             if user.role == 'admin':
                 return redirect(url_for('admin_dashboard'))
             else:
                 return redirect(url_for('user_dashboard'))
-
-        flash("Invalid username or password!", "danger")
+        else:
+            log_entry = Log(
+                user_id=user.id if user else None,
+                username=username,
+                action="failed_login"
+            )
+            db.session.add(log_entry)
+            db.session.commit()
+            flash("Invalid username or password!", "danger")
+            
     return render_template('login.html')
 
 def get_adjusted_price(original_price):
@@ -589,12 +605,10 @@ def admin_dashboard():
 @login_required
 @admin_required
 def admin_logs():
-    # Query all transactions from the TransactionHistory table
     transactions = TransactionHistory.query.order_by(TransactionHistory.timestamp.desc()).all()
-    
-    return render_template('admin_logs.html', transactions=transactions)
+    logs = Log.query.order_by(Log.timestamp.desc()).all()
+    return render_template('admin_logs.html', transactions=transactions, logs=logs)
 
-# Function and Route so the Adminstrator can Edit market Hours!
 MST = pytz.timezone("America/Phoenix")
 
 @app.route("/admin/market_hours", methods=["GET", "POST"])
@@ -703,10 +717,11 @@ def delete_user_confirmation(id):
     user = User.query.get_or_404(id)
     return render_template('delete_user_confirmation.html', user=user)
 
-
 @app.route('/logout')
 @login_required
 def logout():
+    db.session.add(Log(user_id=current_user.id, username=current_user.username, action="logout"))
+    db.session.commit()
     logout_user()
     flash("Logged out successfully.", "info")
     return redirect(url_for('login'))
