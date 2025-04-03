@@ -7,13 +7,15 @@ import yfinance as yf
 from datetime import datetime
 from functools import wraps
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, time, date, timedelta
 import pytz
 import random
+from sqlalchemy.ext.hybrid import hybrid_property
+import json
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:67mustang@localhost/stocks_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Madrid0329.@localhost/stocks_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
@@ -57,14 +59,51 @@ class TransactionHistory(db.Model):
 
 class MarketHours(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    open_time = db.Column(db.Time, nullable=False)  
-    close_time = db.Column(db.Time, nullable=False)  
+    open_time = db.Column(db.Time, nullable=False)   # Stored in UTC
+    close_time = db.Column(db.Time, nullable=False)  # Stored in UTC
+    _closed_days = db.Column("closed_days", db.Text, nullable=True)  # Stored as JSON string
+
+    @hybrid_property
+    def closed_days(self):
+        raw = self._closed_days
+        return json.loads(raw) if raw else []
+
+    @closed_days.setter
+    def closed_days(self, value):
+        if not isinstance(value, list):
+            raise ValueError("closed_days must be a list of date strings.")
+        self._closed_days = json.dumps(value)
+
     def is_market_open(self):
-        now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)  
-        now_mst = now_utc.astimezone(MST) 
+        now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
+        now_mst = now_utc.astimezone(MST)
+        today_str = now_mst.strftime('%Y-%m-%d')
+
+        if today_str in self.closed_days:
+            return False
+
         open_time_mst = datetime.combine(datetime.utcnow(), self.open_time).replace(tzinfo=pytz.utc).astimezone(MST).time()
         close_time_mst = datetime.combine(datetime.utcnow(), self.close_time).replace(tzinfo=pytz.utc).astimezone(MST).time()
+
         return open_time_mst <= now_mst.time() <= close_time_mst
+
+    def add_closed_day(self, date_str):
+        updated = list(self.closed_days)  # Force copy to avoid mutation surprises
+        if date_str not in updated:
+            updated.append(date_str)
+            self.closed_days = updated
+
+    def remove_closed_day(self, date_str):
+        updated = list(self.closed_days)
+        if date_str in updated:
+            updated.remove(date_str)
+            self.closed_days = updated
+
+    def clear_closed_days(self):
+        self.closed_days = []
+
+    def __repr__(self):
+        return f"<MarketHours Open: {self.open_time} Close: {self.close_time} Closed Days: {self.closed_days}>"
 
 class Log(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -533,7 +572,6 @@ def funds_confirmation():
                            amount=f"{amount:,.2f}", 
                            new_balance=f"{new_balance:,.2f}")
 
-
 @app.route("/process_funds", methods=["POST"])
 @login_required
 def process_funds():
@@ -594,7 +632,6 @@ def funds():
     formatted_balance = f"{current_user.cash_balance:,.2f}"  
     return render_template("funds.html", cash_balance=formatted_balance)
 
-
 @app.route('/admin_dashboard') 
 @login_required
 @admin_required
@@ -609,8 +646,8 @@ def admin_logs():
     logs = Log.query.order_by(Log.timestamp.desc()).all()
     return render_template('admin_logs.html', transactions=transactions, logs=logs)
 
+# Function and Route so the Adminstrator can Edit market Hours!
 MST = pytz.timezone("America/Phoenix")
-
 @app.route("/admin/market_hours", methods=["GET", "POST"])
 @login_required
 @admin_required
@@ -618,6 +655,7 @@ def admin_market_hours():
     market_hours = MarketHours.query.first()
 
     if request.method == "POST":
+        # Get time inputs first
         open_time_mst = request.form.get("open_time")
         close_time_mst = request.form.get("close_time")
 
@@ -625,42 +663,144 @@ def admin_market_hours():
             flash("Please enter valid market hours.", "danger")
             return redirect(url_for("admin_market_hours"))
 
-        # Convert input time from string to datetime in MST
-        open_time_dt_mst = datetime.strptime(open_time_mst, "%H:%M")
-        close_time_dt_mst = datetime.strptime(close_time_mst, "%H:%M")
+        # Convert to UTC
+        open_time_dt_mst = MST.localize(datetime.combine(datetime.today(), datetime.strptime(open_time_mst, "%H:%M").time()))
+        close_time_dt_mst = MST.localize(datetime.combine(datetime.today(), datetime.strptime(close_time_mst, "%H:%M").time()))
 
-        # Ensure the datetime is localized to MST before converting to UTC
-        open_time_dt_mst = MST.localize(datetime.combine(datetime.today(), open_time_dt_mst.time()))
-        close_time_dt_mst = MST.localize(datetime.combine(datetime.today(), close_time_dt_mst.time()))
-
-        # Convert MST to UTC and store only the time part
         open_time_utc = open_time_dt_mst.astimezone(pytz.utc).time()
         close_time_utc = close_time_dt_mst.astimezone(pytz.utc).time()
 
-        # Store in the database
+        # Get closed days input
+        closed_days_raw = request.form.get("closed_days")
+        closed_days_list = [line.strip() for line in closed_days_raw.splitlines() if line.strip()]
+
+        try:
+            valid_dates = validate_closed_dates(closed_days_list)
+        except ValueError as e:
+            flash(str(e), "danger")
+            return redirect(url_for("admin_market_hours"))
+
         if market_hours:
             market_hours.open_time = open_time_utc
             market_hours.close_time = close_time_utc
+            market_hours.closed_days = valid_dates
         else:
-            market_hours = MarketHours(open_time=open_time_utc, close_time=close_time_utc)
+            market_hours = MarketHours(
+                open_time=open_time_utc,
+                close_time=close_time_utc
+            )
+            market_hours.closed_days = valid_dates
             db.session.add(market_hours)
 
         db.session.commit()
-        flash("Market hours updated successfully!", "success")
+        flash("Market hours and closed days updated successfully!", "success")
         return redirect(url_for("admin_market_hours"))
 
-    # Convert stored UTC times back to MST for display
-    open_time_mst = None
-    close_time_mst = None
+    # --- GET Method (Display Preparation) ---
+
+    open_time_mst = close_time_mst = closed_days_text = ""
+    holidays = get_us_market_holidays(datetime.now().year)
+    custom_closed_days = []
 
     if market_hours:
+        # Convert to MST for display
         open_time_dt_utc = datetime.combine(datetime.today(), market_hours.open_time).replace(tzinfo=pytz.utc)
         close_time_dt_utc = datetime.combine(datetime.today(), market_hours.close_time).replace(tzinfo=pytz.utc)
 
         open_time_mst = open_time_dt_utc.astimezone(MST).strftime('%H:%M')
         close_time_mst = close_time_dt_utc.astimezone(MST).strftime('%H:%M')
 
-    return render_template("admin_market_hours.html", open_time=open_time_mst, close_time=close_time_mst)
+        # Split automatic holidays from custom closed days
+        custom_closed_days = [d for d in market_hours.closed_days if d not in holidays]
+
+        # Pre-fill the textarea
+        closed_days_text = "\n".join(custom_closed_days)
+
+    return render_template("admin_market_hours.html",
+                           open_time=open_time_mst,
+                           close_time=close_time_mst,
+                           closed_days_text=closed_days_text,
+                           holidays=sorted(holidays),
+                           custom_closed_days=sorted(custom_closed_days))
+
+
+
+def get_us_market_holidays(year):
+    holidays = set()
+
+    # New Year’s Day - January 1
+    nyd = date(year, 1, 1)
+    holidays.add(nyd.strftime("%Y-%m-%d"))
+
+    # Martin Luther King Jr. Day - January 20 (Fixed)
+    mlk_day = date(year, 1, 20)
+    holidays.add(mlk_day.strftime("%Y-%m-%d"))
+
+    # Washington's Birthday (Presidents Day) - February 17 (fixed)
+    presidents_day = date(year, 2, 17)
+    holidays.add(presidents_day.strftime("%Y-%m-%d"))
+
+    # Memorial Day - May 26 (fixed)
+    memorial_day = date(year, 5, 26)
+    holidays.add(memorial_day.strftime("%Y-%m-%d"))
+
+    # Juneteenth - June 19
+    juneteenth = date(year, 6, 19)
+    holidays.add(juneteenth.strftime("%Y-%m-%d"))
+
+    # Independence Day - July 4
+    july4 = date(year, 7, 4)
+    holidays.add(july4.strftime("%Y-%m-%d"))
+
+    # Labor Day - September 1
+    labor_day = date(year, 9, 1)
+    holidays.add(labor_day.strftime("%Y-%m-%d"))
+
+    # Columbus Day - October 13
+    columbus_day = date(year, 10, 13)
+    holidays.add(columbus_day.strftime("%Y-%m-%d"))
+
+    # Veterans Day - November 11
+    veterans_day = date(year, 11, 11)
+    holidays.add(veterans_day.strftime("%Y-%m-%d"))
+
+    # Thanksgiving Day - November 27
+    thanksgiving = date(year, 11, 27)
+    holidays.add(thanksgiving.strftime("%Y-%m-%d"))
+
+    # Christmas Day - December 25
+    xmas = date(year, 12, 25)
+    holidays.add(xmas.strftime("%Y-%m-%d"))
+
+    return holidays
+
+
+def validate_closed_dates(date_list):
+    valid = []
+    today = datetime.now().date()
+
+    for date_str in date_list:
+        try:
+            dt = datetime.strptime(date_str.strip(), "%Y-%m-%d").date()
+            if dt < today:
+                continue
+            valid.append(dt.strftime("%Y-%m-%d"))
+        except ValueError:
+            raise ValueError(f"Invalid date format detected: '{date_str}'. Use YYYY-MM-DD.")
+
+    return sorted(set(valid))
+
+# ---------------------
+# Routes
+# ---------------------
+
+@app.template_filter('pretty_date')
+def pretty_date(date_str):
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        return dt.strftime("%B %d, %Y (%A)")
+    except Exception:
+        return date_str
 
 @app.route('/admin_account_management') 
 @login_required

@@ -7,19 +7,55 @@
     <h2 class="text-center">Manage Market Hours (MST)</h2>
 
     <form method="POST">
+
+        <!-- Open Time -->
         <div class="mb-3">
             <label for="open_time" class="form-label">Market Open Time (MST)</label>
             <input type="time" name="open_time" class="form-control" value="{{ open_time }}" required>
         </div>
 
+        <!-- Close Time -->
         <div class="mb-3">
             <label for="close_time" class="form-label">Market Close Time (MST)</label>
             <input type="time" name="close_time" class="form-control" value="{{ close_time }}" required>
         </div>
 
-        <button type="submit" class="btn btn-primary">Update Market Hours</button>
+        <!-- Closed Days Textarea -->
+        <div class="mb-3">
+            <label for="closed_days" class="form-label">Admin Custom Closed Dates (one per line)</label>
+            <textarea name="closed_days" class="form-control" rows="6" placeholder="Example:&#10;2025-04-05&#10;2025-04-10">{{ closed_days_text }}</textarea>
+            <small class="form-text text-muted">Enter one date per line (format: YYYY-MM-DD)</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update Market Schedule</button>
     </form>
+
+    <!-- Display Split Lists -->
+    <div class="mt-4">
+
+        <h5>📅 Official Market Holidays (Auto):</h5>
+        {% if holidays %}
+            <ul>
+            {% for day in holidays %}
+                <li>{{ day | pretty_date }}</li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No holidays defined.</p>
+        {% endif %}
+
+        <h5>🔴 Admin Custom Closed Days:</h5>
+        {% if custom_closed_days %}
+            <ul>
+            {% for day in custom_closed_days %}
+                <li>{{ day | pretty_date }}</li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No custom closed days.</p>
+        {% endif %}
+
+    </div>
+
 </div>
 {% endblock %}
-
-
