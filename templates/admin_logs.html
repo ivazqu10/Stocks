@@ -63,7 +63,7 @@
                     <td>{{ t.user.username }}</td>
                     <td>{{ t.action }}</td>
                     <td>{{ t.amount }}</td>
-                    <td>{{ t.timestamp }}</td>
+                    <td>{{ t.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -75,9 +75,9 @@
 
     <h2 class="text-center mb-3">Activity Logs</h2>
     {% if logs %}
-    <div class="table-responsive">
+    <div class="table-responsive mb-5" style="max-height: 500px; overflow-y: auto;">
         <table class="table table-bordered text-center">
-            <thead class="table-light">
+            <thead class="table-light position-sticky top-0">
                 <tr>
                     <th>ID</th>
                     <th>User</th>
@@ -91,7 +91,7 @@
                     <td>{{ log.id }}</td>
                     <td>{{ log.user.username }}</td>
                     <td>{{ log.activity }}</td>
-                    <td>{{ log.timestamp }}</td>
+                    <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -102,3 +102,4 @@
     {% endif %}
 </div>
 {% endblock %}
+
