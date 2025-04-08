@@ -54,18 +54,11 @@
                 </td>
                 <td>{{ stock.quantity }}</td>
                 <td>
-<<<<<<< Updated upstream
                     <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editStockModal{{ stock.id }}">Edit</button>
                     <form action="{{ url_for('delete_stock', stock_id=stock.id) }}" method="POST" class="d-inline">
-                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ stock_symbol }}?');">Delete</button>
-=======
-                    <!-- Edit Button -->
-                    <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editStockModal{{ stock.id }}">Edit</button>
-
                     <!-- Delete Form -->
                     <form action="{{ url_for('delete_stock', stock_id=stock.id) }}" method="POST" class="d-inline">
                         <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ stock.symbol }}?');">Delete</button>
->>>>>>> Stashed changes
                     </form>
                 </td>
             </tr>
