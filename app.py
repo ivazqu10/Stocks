@@ -149,7 +149,6 @@ def get_stock_price(symbol):
         print(f"Error fetching stock price for {symbol}: {e}")
     return 0.0  
 
-
 @app.route('/admin_add_remove_stock', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -157,13 +156,15 @@ def admin_add_remove_stock():
     if request.method == 'POST':
         symbol = request.form.get("symbol", "").upper()
         quantity = request.form.get("quantity", 0, type=int)
+        price_mode = request.form.get("price_mode")  # 'manual' or 'live'
+        manual_price = request.form.get("manual_price", type=float)
 
         if not symbol:
             flash("Please insert stock.", "danger")
             return redirect(url_for('admin_add_remove_stock'))
 
         if quantity <= 0:
-            flash("Quantity cannot be 0.", "danger")
+            flash("Quantity must be greater than 0.", "danger")
             return redirect(url_for('admin_add_remove_stock'))
 
         existing_stock = stock_price.query.filter_by(symbol=symbol).first()
@@ -171,23 +172,31 @@ def admin_add_remove_stock():
             flash(f"{symbol} is already being tracked.", "warning")
             return redirect(url_for('admin_add_remove_stock'))
 
-        price = get_stock_price(symbol)
-        if price == 0.0:
-            flash(f"Failed to fetch stock price for {symbol}.", "danger")
-            return redirect(url_for('admin_add_remove_stock'))
+        if price_mode == "manual":
+            if not manual_price or manual_price <= 0:
+                flash("Manual price must be greater than 0.", "danger")
+                return redirect(url_for('admin_add_remove_stock'))
+            price = manual_price
+        else:
+            try:
+                price = get_stock_price(symbol)
+            except Exception as e:
+                flash(f"Error fetching price: {str(e)}", "danger")
+                return redirect(url_for('admin_add_remove_stock'))
+
+            if price == 0.0:
+                flash(f"Failed to fetch stock price for {symbol}.", "danger")
+                return redirect(url_for('admin_add_remove_stock'))
 
         new_stock = stock_price(symbol=symbol, price=price, quantity=quantity)
         db.session.add(new_stock)
         db.session.commit()
 
-        # Flash message only for admins
-        flash(f"Stock {symbol} added successfully with price ${price:.2f} and quantity {quantity}!", "admin")
-
+        flash(f"Stock {symbol} added successfully with price ${price:.2f} and quantity {quantity}!", "success")
         return redirect(url_for('admin_add_remove_stock'))
 
     stocks = stock_price.query.all()
     return render_template('admin_add_remove_stock.html', stocks=stocks)
-
 
 @app.route('/delete_stock/<int:stock_id>', methods=['POST'])
 @login_required
@@ -264,22 +273,18 @@ def register():
         email = request.form.get('email')  # Capture the email input from the form
         password = generate_password_hash(request.form['password'])
 
-        # Validate email
         if not email:
             flash("Email is required!", "danger")
             return redirect(url_for('register'))
 
-        # Check if username already exists
         if User.query.filter_by(username=username).first():
             flash("Username already exists!", "danger")
             return redirect(url_for('register'))
 
-        # Check if email already exists
         if User.query.filter_by(email=email).first():
             flash("Email already exists!", "danger")
             return redirect(url_for('register'))
 
-        # Create new user with email
         new_user = User(username=username, email=email, password=password)
         db.session.add(new_user)
         db.session.commit()
@@ -669,6 +674,7 @@ def admin_market_hours():
 
         open_time_utc = open_time_dt_mst.astimezone(pytz.utc).time()
         close_time_utc = close_time_dt_mst.astimezone(pytz.utc).time()
+<<<<<<< Updated upstream
 
         # Get closed days input
         closed_days_raw = request.form.get("closed_days")
@@ -680,6 +686,9 @@ def admin_market_hours():
             flash(str(e), "danger")
             return redirect(url_for("admin_market_hours"))
 
+=======
+        # Store in the database
+>>>>>>> Stashed changes
         if market_hours:
             market_hours.open_time = open_time_utc
             market_hours.close_time = close_time_utc

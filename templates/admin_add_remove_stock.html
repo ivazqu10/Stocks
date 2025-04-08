@@ -4,15 +4,32 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="text-center">Manage Stocks</h2>
+    <h2 class="text-center mb-4">Manage Stocks</h2>
 
-    <form action="{{ url_for('admin_add_remove_stock') }}" method="POST" class="mb-4">
+    <form action="{{ url_for('admin_add_remove_stock') }}" method="POST" class="mb-5">
         <h4>Add a Stock:</h4>
+
         <input type="text" name="symbol" class="form-control mb-2" placeholder="Stock Symbol" required>
         <input type="number" name="quantity" class="form-control mb-2" min="1" placeholder="Quantity" required>
+
+        <div class="mb-2">
+            <label class="form-label">Price Source:</label><br>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="price_mode" id="price_mode_live" value="live" checked>
+                <label class="form-check-label" for="price_mode_live">Fetch from Market</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="price_mode" id="price_mode_manual" value="manual">
+                <label class="form-check-label" for="price_mode_manual">Enter Manually</label>
+            </div>
+        </div>
+
+        <input type="number" step="0.01" min="0" name="manual_price" class="form-control mb-2" placeholder="Manual Price (if selected above)">
+
         <button type="submit" class="btn btn-primary">Add Stock</button>
     </form>
 
+    <!-- Stock Table -->
     <h3>Stocks Available:</h3>
     {% if stocks %}
     <table class="table table-bordered text-center">
@@ -37,13 +54,23 @@
                 </td>
                 <td>{{ stock.quantity }}</td>
                 <td>
+<<<<<<< Updated upstream
                     <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editStockModal{{ stock.id }}">Edit</button>
                     <form action="{{ url_for('delete_stock', stock_id=stock.id) }}" method="POST" class="d-inline">
                     <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ stock_symbol }}?');">Delete</button>
+=======
+                    <!-- Edit Button -->
+                    <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editStockModal{{ stock.id }}">Edit</button>
+
+                    <!-- Delete Form -->
+                    <form action="{{ url_for('delete_stock', stock_id=stock.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ stock.symbol }}?');">Delete</button>
+>>>>>>> Stashed changes
                     </form>
                 </td>
             </tr>
 
+            <!-- Edit Modal -->
             <div class="modal fade" id="editStockModal{{ stock.id }}" tabindex="-1">
                 <div class="modal-dialog">
                     <div class="modal-content">
