@@ -12,7 +12,7 @@ import pytz
 import random
 from sqlalchemy.ext.hybrid import hybrid_property
 import json
-
+#Hello World
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Madrid0329.@localhost/stocks_db'
@@ -674,7 +674,6 @@ def admin_market_hours():
 
         open_time_utc = open_time_dt_mst.astimezone(pytz.utc).time()
         close_time_utc = close_time_dt_mst.astimezone(pytz.utc).time()
-<<<<<<< Updated upstream
 
         # Get closed days input
         closed_days_raw = request.form.get("closed_days")
@@ -686,9 +685,7 @@ def admin_market_hours():
             flash(str(e), "danger")
             return redirect(url_for("admin_market_hours"))
 
-=======
         # Store in the database
->>>>>>> Stashed changes
         if market_hours:
             market_hours.open_time = open_time_utc
             market_hours.close_time = close_time_utc
