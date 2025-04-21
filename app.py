@@ -12,15 +12,14 @@ import pytz
 import random
 from sqlalchemy.ext.hybrid import hybrid_property
 import json
-#Hello World
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Madrid0329.@localhost/stocks_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://admin:Jaman3240%23@my-rds-instance.ce92g2g4cjab.us-east-1.rds.amazonaws.com:3306/stocks_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
 db = SQLAlchemy(app)
-
+# Classes are our Tables in DB
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -59,9 +58,9 @@ class TransactionHistory(db.Model):
 
 class MarketHours(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    open_time = db.Column(db.Time, nullable=False)   # Stored in UTC
-    close_time = db.Column(db.Time, nullable=False)  # Stored in UTC
-    _closed_days = db.Column("closed_days", db.Text, nullable=True)  # Stored as JSON string
+    open_time = db.Column(db.Time, nullable=False)
+    close_time = db.Column(db.Time, nullable=False)
+    _closed_days = db.Column("closed_days", db.Text, nullable=True)
 
     @hybrid_property
     def closed_days(self):
@@ -88,7 +87,7 @@ class MarketHours(db.Model):
         return open_time_mst <= now_mst.time() <= close_time_mst
 
     def add_closed_day(self, date_str):
-        updated = list(self.closed_days)  # Force copy to avoid mutation surprises
+        updated = list(self.closed_days)
         if date_str not in updated:
             updated.append(date_str)
             self.closed_days = updated
@@ -270,7 +269,7 @@ def user_dashboard():
 def register():
     if request.method == 'POST':
         username = request.form['username']
-        email = request.form.get('email')  # Capture the email input from the form
+        email = request.form.get('email')
         password = generate_password_hash(request.form['password'])
 
         if not email:
@@ -388,14 +387,14 @@ def trade_stock():
             flash("Not enough shares to sell.", "danger")
             return redirect(url_for("buy_sell_stock"))
 
-        adjusted_price = get_adjusted_price(price)  # Ensure consistent sell price
+        adjusted_price = get_adjusted_price(price)  
 
         total_sale_value = adjusted_price * shares
         user_portfolio.shares_owned -= shares
         user.cash_balance += total_sale_value
         stock.quantity += shares
 
-        user_portfolio.last_sell_price = adjusted_price  # Store adjusted price
+        user_portfolio.last_sell_price = adjusted_price
 
         transaction = TransactionHistory(
             user_id=user.id,
@@ -447,7 +446,7 @@ def trade_confirmation():
     total_cost = shares * price
 
     user = current_user
-    stock = stock_price.query.filter_by(symbol=symbol).first()  # Retrieve stock
+    stock = stock_price.query.filter_by(symbol=symbol).first()
 
     if not stock:
         flash("Stock not found.", "danger")
@@ -547,10 +546,11 @@ def execute_trade():
     flash(f"Transaction completed! Your new balance is ${user.cash_balance:.2f}.", "success")
     return redirect(url_for("buy_sell_stock"))
 
+# Deposit" or Withdraw funds 
 @app.route("/funds_confirmation", methods=["POST"])
 @login_required
 def funds_confirmation():
-    action = request.form.get("action")  # "deposit" or "withdraw"
+    action = request.form.get("action")
     amount = request.form.get("amount")
 
     try:
@@ -582,13 +582,11 @@ def funds_confirmation():
 def process_funds():
     action = request.form.get("action")
     amount = request.form.get("amount")
-
-    # Remove commas before converting to float
     if amount:
         amount = amount.replace(",", "")  
 
     try:
-        amount = float(amount)  # Convert to float safely
+        amount = float(amount)
     except (ValueError, TypeError):
         flash("Invalid amount entered.", "danger")
         return redirect(url_for("funds"))
@@ -709,17 +707,16 @@ def admin_market_hours():
     custom_closed_days = []
 
     if market_hours:
-        # Convert to MST for display
+
         open_time_dt_utc = datetime.combine(datetime.today(), market_hours.open_time).replace(tzinfo=pytz.utc)
         close_time_dt_utc = datetime.combine(datetime.today(), market_hours.close_time).replace(tzinfo=pytz.utc)
 
         open_time_mst = open_time_dt_utc.astimezone(MST).strftime('%H:%M')
         close_time_mst = close_time_dt_utc.astimezone(MST).strftime('%H:%M')
 
-        # Split automatic holidays from custom closed days
         custom_closed_days = [d for d in market_hours.closed_days if d not in holidays]
 
-        # Pre-fill the textarea
+        
         closed_days_text = "\n".join(custom_closed_days)
 
     return render_template("admin_market_hours.html",
@@ -796,9 +793,6 @@ def validate_closed_dates(date_list):
 
     return sorted(set(valid))
 
-# ---------------------
-# Routes
-# ---------------------
 
 @app.template_filter('pretty_date')
 def pretty_date(date_str):
@@ -812,20 +806,15 @@ def pretty_date(date_str):
 @login_required
 @admin_required
 def admin_account_management():
-    users = User.query.all()  # Query all users from the database
+    users = User.query.all()
     return render_template('admin_account_management.html', users=users)
 
 @app.route('/view_transactions/<int:id>', methods=['GET'])
 @login_required
 @admin_required
 def view_transactions(id):
-    # Fetch the user by their ID or return a 404 error if not found
     user = User.query.get_or_404(id)
-    
-    # Retrieve the user's transactions (replace this with actual logic if needed)
     transactions = user.transactions
-
-    # Render the 'view_transactions.html' page with the required context
     return render_template('view_transactions.html', user=user, transactions=transactions)
 
 
@@ -833,7 +822,7 @@ def view_transactions(id):
 @login_required
 @admin_required
 def edit_user(id):
-    user = User.query.get_or_404(id)  # Get the user by ID
+    user = User.query.get_or_404(id)
     if request.method == 'POST':
         user.username = request.form['username']
         user.email = request.form['email']
@@ -853,7 +842,6 @@ def delete_user(id):
         db.session.commit()
         flash(f"User {user.username} has been deleted successfully!", "success")
         return redirect(url_for('admin_account_management'))
-    # Render confirmation page for GET requests
     return render_template('delete_user.html', user=user)
 
 @app.route('/delete_user_confirmation/<int:id>', methods=['GET'])
