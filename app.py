@@ -423,7 +423,6 @@ def refresh_prices():
             portfolio.last_sell_price = get_adjusted_price(portfolio.stock.price) 
 
     db.session.commit()
-    flash("Sell prices updated!")
     return redirect(url_for("portfolio"))
 
 
@@ -622,7 +621,15 @@ def transactions():
 @app.route('/portfolio')
 @login_required
 def portfolio():
-    return render_template('portfolio.html')
+    user = current_user
+    portfolios = UserPortfolio.query.filter_by(user_id=user.id).all()
+
+    total_stock_value = 0
+    for stock in portfolios:
+        sell_price = stock.last_sell_price if stock.last_sell_price > 0 else stock.stock.price
+        total_stock_value += stock.shares_owned * sell_price
+
+    return render_template('portfolio.html', total_stock_value=total_stock_value)
 
 @app.route('/instructions_page') 
 @login_required

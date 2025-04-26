@@ -9,8 +9,10 @@
     <p class="text-center">View your currently owned stock shares and sell at live price.</p>
 
     <div class="alert alert-info">
-        <strong>Your Current Balance:</strong> 
-        <span class="text-success">${{ "{:,.2f}".format(current_user.cash_balance) }}</span>
+        <p><strong> Your Current Balance:</strong> 
+        <span class="text-success">${{ "{:,.2f}".format(current_user.cash_balance) }}</span></p>
+        <p><strong> Total Stock Value:</strong> 
+        <span class="text-primary">${{ "{:,.2f}".format(total_stock_value) }}</span></p>
     </div>
 
     {% if current_user.portfolio %}
