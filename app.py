@@ -46,14 +46,14 @@ class UserPortfolio(db.Model):
 
 class TransactionHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     stock_id = db.Column(db.Integer, db.ForeignKey('stock_price.id'), nullable=False)
     transaction_type = db.Column(db.String(10), nullable=False) 
     shares = db.Column(db.Integer, nullable=False)
     price_per_share = db.Column(db.Float, nullable=False)
     total_cost = db.Column(db.Float, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    user = db.relationship('User', backref=db.backref('transactions', lazy=True))
+    user = db.relationship('User', backref=db.backref('transactions', lazy=True, passive_deletes=True))
     stock = db.relationship('stock_price', backref=db.backref('transactions', lazy=True))
 
 class MarketHours(db.Model):
@@ -106,11 +106,11 @@ class MarketHours(db.Model):
 
 class Log(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     username = db.Column(db.String(150))
     action = db.Column(db.String(10))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    user = db.relationship('User', backref=db.backref('logs', lazy=True))
+    user = db.relationship('User', backref=db.backref('logs', lazy=True, passive_deletes=True))
 
 with app.app_context():
     db.create_all()
