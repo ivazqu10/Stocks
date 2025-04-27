@@ -79,7 +79,7 @@ class MarketHours(db.Model):
         today_str = now_mst.strftime('%Y-%m-%d')
 
         if today_str in self.closed_days:
-            return False
+            return True
 
         open_time_mst = datetime.combine(datetime.utcnow(), self.open_time).replace(tzinfo=pytz.utc).astimezone(MST).time()
         close_time_mst = datetime.combine(datetime.utcnow(), self.close_time).replace(tzinfo=pytz.utc).astimezone(MST).time()
