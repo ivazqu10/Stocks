@@ -37,11 +37,11 @@ class stock_price(db.Model):
 
 class UserPortfolio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     stock_id = db.Column(db.Integer, db.ForeignKey('stock_price.id'), nullable=False)
     shares_owned = db.Column(db.Integer, default=0)
     last_sell_price = db.Column(db.Float, default=0.0)
-    user = db.relationship('User', backref=db.backref('portfolio', lazy=True))
+    user = db.relationship('User', backref=db.backref('portfolio', lazy=True, passive_deletes=True))
     stock = db.relationship('stock_price', backref=db.backref('holdings', lazy=True))
 
 class TransactionHistory(db.Model):
