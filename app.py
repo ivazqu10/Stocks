@@ -7,7 +7,7 @@ import yfinance as yf
 from datetime import datetime
 from functools import wraps
 import pandas as pd
-from datetime import datetime, time, date, timedelta
+from datetime import datetime, time, date
 import pytz
 import random
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -19,7 +19,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", 'your_secret_key_here')
 
 db = SQLAlchemy(app)
-# Classes are our Tables in DB
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -130,7 +129,7 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or current_user.role != "admin":
-            flash("Access Denied!", "danger")
+            flash("Access Denied")
             return redirect(url_for('user_dashboard'))
         return f(*args, **kwargs)
     return decorated_function
@@ -155,43 +154,40 @@ def admin_add_remove_stock():
     if request.method == 'POST':
         symbol = request.form.get("symbol", "").upper()
         quantity = request.form.get("quantity", 0, type=int)
-        price_mode = request.form.get("price_mode")  # 'manual' or 'live'
+        price_mode = request.form.get("price_mode") 
         manual_price = request.form.get("manual_price", type=float)
 
         if not symbol:
-            flash("Please insert stock.", "danger")
+            flash("Please insert stock.")
             return redirect(url_for('admin_add_remove_stock'))
-
         if quantity <= 0:
-            flash("Quantity must be greater than 0.", "danger")
+            flash("Invalid quantity.")
             return redirect(url_for('admin_add_remove_stock'))
-
         existing_stock = stock_price.query.filter_by(symbol=symbol).first()
         if existing_stock:
-            flash(f"{symbol} is already being tracked.", "warning")
+            flash(f"{symbol} is already being tracked.")
             return redirect(url_for('admin_add_remove_stock'))
-
         if price_mode == "manual":
             if not manual_price or manual_price <= 0:
-                flash("Manual price must be greater than 0.", "danger")
+                flash("Invalid quantity")
                 return redirect(url_for('admin_add_remove_stock'))
             price = manual_price
         else:
             try:
                 price = get_stock_price(symbol)
             except Exception as e:
-                flash(f"Error fetching price: {str(e)}", "danger")
+                flash(f"Error fetching price: {str(e)}")
                 return redirect(url_for('admin_add_remove_stock'))
 
             if price == 0.0:
-                flash(f"Failed to fetch stock price for {symbol}.", "danger")
+                flash(f"Failed to fetch stock price for {symbol}.")
                 return redirect(url_for('admin_add_remove_stock'))
 
         new_stock = stock_price(symbol=symbol, price=price, quantity=quantity)
         db.session.add(new_stock)
         db.session.commit()
 
-        flash(f"Stock {symbol} added successfully with price ${price:.2f} and quantity {quantity}!", "success")
+        flash(f"Stock {symbol} added successfully with price ${price:.2f} and quantity {quantity}")
         return redirect(url_for('admin_add_remove_stock'))
 
     stocks = stock_price.query.all()
@@ -273,21 +269,21 @@ def register():
         password = generate_password_hash(request.form['password'])
 
         if not email:
-            flash("Email is required!", "danger")
+            flash("Email required")
             return redirect(url_for('register'))
 
         if User.query.filter_by(username=username).first():
-            flash("Username already exists!", "danger")
+            flash("Username already exists")
             return redirect(url_for('register'))
 
         if User.query.filter_by(email=email).first():
-            flash("Email already exists!", "danger")
+            flash("Email already exists")
             return redirect(url_for('register'))
 
         new_user = User(username=username, email=email, password=password)
         db.session.add(new_user)
         db.session.commit()
-        flash("Registration successful! Please login.", "success")
+        flash("Registration successful. Please login.")
         return redirect(url_for('login'))
 
     return render_template('register.html')
@@ -305,7 +301,7 @@ def login():
 
         if user and check_password_hash(user.password, password):
             login_user(user)
-            flash("Login successful!", "success")
+            flash("Login successful!")
             db.session.add(Log(user_id=user.id, username=user.username, action="login"))
             db.session.commit()
             if user.role == 'admin':
@@ -320,7 +316,7 @@ def login():
             )
             db.session.add(log_entry)
             db.session.commit()
-            flash("Invalid username or password!", "danger")
+            flash("Invalid username or password")
             
     return render_template('login.html')
 
@@ -337,7 +333,7 @@ def trade_stock():
     price = request.form.get("price")
 
     if not symbol or not action or not shares or not price:
-        flash("Invalid trade request.", "danger")
+        flash("Invalid trade request.")
         return redirect(url_for("buy_sell_stock"))
 
     shares = int(shares)
@@ -347,20 +343,19 @@ def trade_stock():
     stock = stock_price.query.filter_by(symbol=symbol).first()
 
     if not stock:
-        flash("Stock not found.", "danger")
+        flash("Stock not found.")
         return redirect(url_for("buy_sell_stock"))
 
     user_portfolio = UserPortfolio.query.filter_by(user_id=user.id, stock_id=stock.id).first()
-
     if action == "buy":
         total_cost = price * shares
 
         if stock.quantity < shares:
-            flash(f"Not enough shares available! Only {stock.quantity} left.", "danger")
+            flash(f"Not enough shares, Only {stock.quantity} left.")
             return redirect(url_for("buy_sell_stock"))
 
         if user.cash_balance < total_cost:
-            flash("Insufficient funds.", "danger")
+            flash("Insufficient funds.")
             return redirect(url_for("buy_sell_stock"))
 
         user.cash_balance -= total_cost
@@ -384,7 +379,7 @@ def trade_stock():
 
     elif action == "sell":
         if not user_portfolio or user_portfolio.shares_owned < shares:
-            flash("Not enough shares to sell.", "danger")
+            flash("Not enough shares to sell.")
             return redirect(url_for("buy_sell_stock"))
 
         adjusted_price = get_adjusted_price(price)  
@@ -406,11 +401,11 @@ def trade_stock():
         )
         db.session.add(transaction)
 
-        flash(f"Sold at adjusted price: ${adjusted_price:.2f}", "info")
+        flash(f"Sold at adjusted price: ${adjusted_price:.2f}")
 
     db.session.commit()
-    flash(f"Transaction completed! Your new balance is ${user.cash_balance:.2f}.")
-    return redirect(url_for("buy_sell_stock"))
+    flash(f"Transaction completed. Your new balance is ${user.cash_balance:.2f}.")
+    return redirect(url_for("portfolio"))
 
 @app.route("/refresh_prices", methods=["POST"])
 @login_required
@@ -437,7 +432,7 @@ def trade_confirmation():
     price = request.form.get("price")
 
     if not symbol or not action or not shares or not price:
-        flash("Invalid trade request.", "danger")
+        flash("Invalid trade request.")
         return redirect(url_for("buy_sell_stock"))
 
     shares = int(shares)
@@ -448,16 +443,16 @@ def trade_confirmation():
     stock = stock_price.query.filter_by(symbol=symbol).first()
 
     if not stock:
-        flash("Stock not found.", "danger")
+        flash("Stock not found.")
         return redirect(url_for("buy_sell_stock"))
 
     if action == "buy":
         if stock.quantity < shares:
-            flash(f"Not enough shares available! Only {stock.quantity} left.", "danger")
+            flash(f"Not enough shares. Only {stock.quantity} left.")
             return redirect(url_for("buy_sell_stock"))
 
         if user.cash_balance < total_cost:
-            flash("Insufficient funds.", "danger")
+            flash("Insufficient funds.")
             return redirect(url_for("buy_sell_stock"))
 
         new_balance = user.cash_balance - total_cost
@@ -465,7 +460,7 @@ def trade_confirmation():
     elif action == "sell":
         user_portfolio = UserPortfolio.query.filter_by(user_id=user.id, stock_id=stock.id).first()
         if not user_portfolio or user_portfolio.shares_owned < shares:
-            flash("Not enough shares to sell.", "danger")
+            flash("Not enough shares to sell.")
             return redirect(url_for("buy_sell_stock"))
 
         new_balance = user.cash_balance + total_cost
@@ -487,18 +482,18 @@ def execute_trade():
     stock = stock_price.query.filter_by(symbol=symbol).first()
 
     if not stock:
-        flash("Stock not found.", "danger")
+        flash("Stock not found.")
         return redirect(url_for("buy_sell_stock"))
 
     user_portfolio = UserPortfolio.query.filter_by(user_id=user.id, stock_id=stock.id).first()
 
     if action == "buy":
         if stock.quantity < shares:
-            flash(f"Not enough shares available! Only {stock.quantity} left.", "danger")
+            flash(f"Not enough shares available. Only {stock.quantity} left.")
             return redirect(url_for("buy_sell_stock"))
 
         if user.cash_balance < total_cost:
-            flash("Insufficient funds.", "danger")
+            flash("Insufficient funds.")
             return redirect(url_for("buy_sell_stock"))
 
         user.cash_balance -= total_cost
@@ -522,7 +517,7 @@ def execute_trade():
 
     elif action == "sell":
         if not user_portfolio or user_portfolio.shares_owned < shares:
-            flash("Not enough shares to sell.", "danger")
+            flash("Not enough shares to sell.")
             return redirect(url_for("buy_sell_stock"))
 
         total_sale_value = price * shares
@@ -542,10 +537,9 @@ def execute_trade():
 
     db.session.commit() 
 
-    flash(f"Transaction completed! Your new balance is ${user.cash_balance:.2f}.", "success")
+    flash(f"Transaction completed. Your new balance is ${user.cash_balance:.2f}.")
     return redirect(url_for("buy_sell_stock"))
 
-# Deposit" or Withdraw funds 
 @app.route("/funds_confirmation", methods=["POST"])
 @login_required
 def funds_confirmation():
@@ -555,26 +549,22 @@ def funds_confirmation():
     try:
         amount = float(amount.replace(",", ""))  
     except (ValueError, TypeError):
-        flash("Invalid amount entered.", "danger")
+        flash("Invalid amount entered.")
         return redirect(url_for("funds"))
 
     if not action or amount <= 0:
-        flash("Invalid transaction request.", "danger")
+        flash("Invalid transaction request.")
         return redirect(url_for("funds"))
 
-    # Calculate new balance before confirming the transaction
     if action == "deposit":
         new_balance = current_user.cash_balance + amount
     elif action == "withdraw":
         if current_user.cash_balance < amount:
-            flash("Insufficient funds for withdrawal.", "danger")
+            flash("Insufficient funds for withdrawal.")
             return redirect(url_for("funds"))
         new_balance = current_user.cash_balance - amount
 
-    return render_template("funds_confirmation.html", 
-                           action=action, 
-                           amount=f"{amount:,.2f}", 
-                           new_balance=f"{new_balance:,.2f}")
+    return render_template("funds_confirmation.html", action=action, amount=f"{amount:,.2f}", new_balance=f"{new_balance:,.2f}")
 
 @app.route("/process_funds", methods=["POST"])
 @login_required
@@ -587,25 +577,25 @@ def process_funds():
     try:
         amount = float(amount)
     except (ValueError, TypeError):
-        flash("Invalid amount entered.", "danger")
+        flash("Invalid amount entered.")
         return redirect(url_for("funds"))
 
     if not action or amount <= 0:
-        flash("Invalid transaction request.", "danger")
+        flash("Invalid transaction request.")
         return redirect(url_for("funds"))
 
     if action == "deposit":
         current_user.cash_balance += amount
         db.session.add(current_user)
-        flash(f"Successfully deposited ${amount:,.2f}.", "success")
+        flash(f"Successfully deposited ${amount:,.2f}.")
 
     elif action == "withdraw":
         if current_user.cash_balance >= amount:
             current_user.cash_balance -= amount
             db.session.add(current_user)
-            flash(f"Successfully withdrew ${amount:,.2f}.", "success")
+            flash(f"Successfully withdrew ${amount:,.2f}.")
         else:
-            flash("Insufficient funds.", "danger")
+            flash("Insufficient funds.")
             return redirect(url_for("funds"))
 
     db.session.commit()
@@ -656,7 +646,6 @@ def admin_logs():
     logs = Log.query.order_by(Log.timestamp.desc()).all()
     return render_template('admin_logs.html', transactions=transactions, logs=logs)
 
-# Function and Route so the Adminstrator can Edit market Hours!
 MST = pytz.timezone("America/Phoenix")
 @app.route("/admin/market_hours", methods=["GET", "POST"])
 @login_required
@@ -665,32 +654,28 @@ def admin_market_hours():
     market_hours = MarketHours.query.first()
 
     if request.method == "POST":
-        # Get time inputs first
         open_time_mst = request.form.get("open_time")
         close_time_mst = request.form.get("close_time")
 
         if not open_time_mst or not close_time_mst:
-            flash("Please enter valid market hours.", "danger")
+            flash("Please enter valid market hours.")
             return redirect(url_for("admin_market_hours"))
 
-        # Convert to UTC
         open_time_dt_mst = MST.localize(datetime.combine(datetime.today(), datetime.strptime(open_time_mst, "%H:%M").time()))
         close_time_dt_mst = MST.localize(datetime.combine(datetime.today(), datetime.strptime(close_time_mst, "%H:%M").time()))
 
         open_time_utc = open_time_dt_mst.astimezone(pytz.utc).time()
         close_time_utc = close_time_dt_mst.astimezone(pytz.utc).time()
 
-        # Get closed days input
         closed_days_raw = request.form.get("closed_days")
         closed_days_list = [line.strip() for line in closed_days_raw.splitlines() if line.strip()]
 
         try:
             valid_dates = validate_closed_dates(closed_days_list)
         except ValueError as e:
-            flash(str(e), "danger")
+            flash(str(e), "Invalid action")
             return redirect(url_for("admin_market_hours"))
 
-        # Store in the database
         if market_hours:
             market_hours.open_time = open_time_utc
             market_hours.close_time = close_time_utc
@@ -704,10 +689,9 @@ def admin_market_hours():
             db.session.add(market_hours)
 
         db.session.commit()
-        flash("Market hours and closed days updated successfully!", "success")
+        flash("Market hours and closed days updated")
         return redirect(url_for("admin_market_hours"))
 
-    # --- GET Method (Display Preparation) ---
 
     open_time_mst = close_time_mst = closed_days_text = ""
     holidays = get_us_market_holidays(datetime.now().year)
@@ -726,12 +710,7 @@ def admin_market_hours():
         
         closed_days_text = "\n".join(custom_closed_days)
 
-    return render_template("admin_market_hours.html",
-                           open_time=open_time_mst,
-                           close_time=close_time_mst,
-                           closed_days_text=closed_days_text,
-                           holidays=sorted(holidays),
-                           custom_closed_days=sorted(custom_closed_days))
+    return render_template("admin_market_hours.html", open_time=open_time_mst, close_time=close_time_mst, closed_days_text=closed_days_text, holidays=sorted(holidays), custom_closed_days=sorted(custom_closed_days))
 
 
 
@@ -835,7 +814,7 @@ def edit_user(id):
         user.email = request.form['email']
         user.role = request.form['role']
         db.session.commit()
-        flash("User updated successfully!", "success")
+        flash("User updated successfully")
         return redirect(url_for('admin_account_management'))
     return render_template('edit_user.html', user=user)
 
@@ -847,7 +826,7 @@ def delete_user(id):
     if request.method == 'POST':
         db.session.delete(user)
         db.session.commit()
-        flash(f"User {user.username} has been deleted successfully!", "success")
+        flash(f"User {user.username} has been deleted")
         return redirect(url_for('admin_account_management'))
     return render_template('delete_user.html', user=user)
 
